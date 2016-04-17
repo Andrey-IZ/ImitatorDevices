@@ -3,7 +3,7 @@ import re
 import sys
 import os
 import importlib
-from imitator_serial_device import FoldingSettings
+from imitator_serial_device import SettingsProtocol
 from tools_parse_yaml_protocol import str_hex2byte
 import unittest
 
@@ -48,7 +48,7 @@ def load_handler(file_name, function_name):
 
 
 def folding_settings_tests():
-    settings = FoldingSettings()
+    settings = SettingsProtocol()
     settings.parse('protocol_serial_device.conf')
     assert settings.handler_response(
         b'\xa5\x00\x1b\x04\x01\x00\xff\x07\xe6\x17') == b'\xa5\x00\x1f\x04\x00\x00\x00\x00\x1b\x17'
