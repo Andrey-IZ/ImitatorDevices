@@ -17,10 +17,15 @@ class ServerDeviceImitator(object):
     def __un_func_reader(self):
         if self.__reader_arg is None:
             return self.__func_reader()
-        elif isinstance(self.__reader_arg, tuple):
-            return self.__func_reader(getattr(self.__reader_arg[0], self.__reader_arg[1]))
+        elif isinstance(self.__reader_arg, tuple) and len(self.__reader_arg) == 2:
+            if hasattr(self.__reader_arg[0], '__call__'):
+                if self.__reader_arg[1] == 'call':
+                    return self.__func_reader(self.__reader_arg[0]())
+                else:
+                    return self.__func_reader(self.__reader_arg[0])
         elif hasattr(self.__reader_arg, '__call__'):
-            return self.__func_reader(self.__reader_arg)
+                return self.__func_reader(getattr(self.__reader_arg[0], self.__reader_arg[1]))
+        return None
 
     def reader(self):
         """loop forever and handling packets protocol"""

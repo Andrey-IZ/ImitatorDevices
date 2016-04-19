@@ -5,13 +5,18 @@ import logging
 import serial
 import sys
 from serial_port_settings import SettingsProtocol, SerialPortSettings
+from imitator_serial_device import ImitatorSerialDeviceParams
 from ImitatorDevice.server_device_imitator import ServerDeviceImitator
-
+# import handlers_ukcu
 
 if __name__ == '__main__':
+
+    params = ImitatorSerialDeviceParams(path_to_conf='protocol_serial_device.conf')
+    params.parse_args()
+
+    file_conf = params.path_to_conf
     logging.basicConfig(format=u'%(asctime)-15s [%(threadName)s] %(message)s',
-                        level=logging.INFO)
-    file_conf = 'protocol_serial_device.conf'
+                        level=params.level)
     settings_conf = SettingsProtocol(SerialPortSettings())
     logging.info("Parsing configuration file: {}".format(file_conf))
     settings_conf.parse(file_conf)
@@ -19,8 +24,8 @@ if __name__ == '__main__':
 
     # connect to serial port
     ser = serial.Serial()
-    ser.port = settings_conf.port_settings.port#, do_not_open=True)
-    ser.timeout = 3     # required so that the reader thread can exit
+    ser.port = settings_conf.port_settings.port  # , do_not_open=True)
+    ser.timeout = 3  # required so that the reader thread can exit
     ser.in_baudrate = settings_conf.port_settings.baud_rate
     ser.parity = settings_conf.port_settings.parity
     ser.stopbits = settings_conf.port_settings.stop_bits
@@ -30,6 +35,7 @@ if __name__ == '__main__':
         ser.open()
     except serial.SerialException as e:
         logging.error("!ERROR:  Could not open serial port {}: {}".format(ser.name, e))
+        input('For exit from application push <Enter>')
         sys.exit(1)
 
     cmd = ''
@@ -38,7 +44,7 @@ if __name__ == '__main__':
         print(u">>> Imitator serial device is started.  Enter 'exit' for quit. Enter 'start' to start server")
         try:
             logging.info("Serving serial port: {}".format(settings_conf.port_settings))
-            serial_server = ServerDeviceImitator(settings_conf, ser.write, ser.read, (ser, 'in_waiting'))
+            serial_server = ServerDeviceImitator(settings_conf, ser.write, ser.read, (ser.inWaiting, 'call'))
             try:
                 serial_server.listen()
                 while True:

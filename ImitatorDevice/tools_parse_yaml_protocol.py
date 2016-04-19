@@ -39,7 +39,8 @@ def __import_function(file_name, function_name):
         if path_dir not in sys.path:
             sys.path.append(path_dir)
         try:
-            module = importlib.import_module(module_name)
+            # module = importlib.import_module(module_name)
+            module = __import__(module_name)
             func = getattr(module, function_name, None)
             return func
         except ImportError:

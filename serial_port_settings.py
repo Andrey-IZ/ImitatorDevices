@@ -16,6 +16,17 @@ class SerialPortSettings(object):
     def get_dict(self):
         return self.__serial_settings
 
+    def __str__(self):
+        return "{0}(baud_rate={1}, databits={2}, parity={3}, stop_bits={4}, timeout={5})".format(
+            self.port, self.baud_rate, self.databits, self.parity, self.stop_bits, self.timeout
+        )
+
+    def __repr__(self):
+        return "SerialPortSettings() (port={0}, baud_rate={1}, databits={2}, " \
+               "parity={3}, stop_bits={4}, timeout={5})".format(
+               self.port, self.baud_rate, self.databits, self.parity, self.stop_bits, self.timeout
+        )
+
     def parse(self, settings):
         for opts in self.__serial_settings.keys():
             if opts in settings:
