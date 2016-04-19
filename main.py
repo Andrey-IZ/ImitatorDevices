@@ -7,7 +7,7 @@ import sys
 from serial_port_settings import SettingsProtocol, SerialPortSettings
 from imitator_serial_device import ImitatorSerialDeviceParams
 from ImitatorDevice.server_device_imitator import ServerDeviceImitator
-# import handlers_ukcu
+import handlers_ukcu
 
 if __name__ == '__main__':
 
@@ -17,6 +17,7 @@ if __name__ == '__main__':
     file_conf = params.path_to_conf
     logging.basicConfig(format=u'%(asctime)-15s [%(threadName)s] %(message)s',
                         level=params.level)
+    logging.info("Level output messages set to " + params.level_str)
     settings_conf = SettingsProtocol(SerialPortSettings())
     logging.info("Parsing configuration file: {}".format(file_conf))
     settings_conf.parse(file_conf)
@@ -35,13 +36,15 @@ if __name__ == '__main__':
         ser.open()
     except serial.SerialException as e:
         logging.error("!ERROR:  Could not open serial port {}: {}".format(ser.name, e))
-        input('For exit from application push <Enter>')
+        input('For exit from application push <Enter>\n')
         sys.exit(1)
 
     cmd = ''
 
     while True:
-        print(u">>> Imitator serial device is started.  Enter 'exit' for quit. Enter 'start' to start server")
+        print(
+            u">>> Imitator serial device is started.  Enter 'exit' or Ctrl+C enter for quit. "
+            u"Enter 'start' to start server")
         try:
             logging.info("Serving serial port: {}".format(settings_conf.port_settings))
             serial_server = ServerDeviceImitator(settings_conf, ser.write, ser.read, (ser.inWaiting, 'call'))

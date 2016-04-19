@@ -51,7 +51,7 @@ class ServerDeviceImitator(object):
         self.alive = True
         self.thread_read = threading.Thread(target=self.reader)
         self.thread_read.daemon = True
-        self.thread_read.name = 'serial-reader'
+        self.thread_read.name = 'reader'
         self.thread_read.start()
 
     def stop(self):
