@@ -9,7 +9,7 @@ class ServerDeviceImitator(object):
         self.__func_write = func_writer
         self.__reader_arg = arg_reader_func
         self._write_lock = threading.Lock()
-        self.log = logging.getLogger('SerialServer')
+        self.log = logging.getLogger('Server')
         self.thread_read = None
         self.alive = False
         self.__settings = settings
@@ -47,11 +47,11 @@ class ServerDeviceImitator(object):
         self.alive = False
         self.log.debug('reader thread terminated')
 
-    def listen(self):
+    def listen(self, thread_name='reader'):
         self.alive = True
         self.thread_read = threading.Thread(target=self.reader)
         self.thread_read.daemon = True
-        self.thread_read.name = 'reader'
+        self.thread_read.name = thread_name
         self.thread_read.start()
 
     def stop(self):
