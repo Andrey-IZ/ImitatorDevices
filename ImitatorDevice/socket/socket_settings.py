@@ -1,0 +1,103 @@
+#!/usr/bin/env python
+
+import logging
+import serial
+
+
+class TcpSocketSettings(object):
+    def __init__(self, port_name='COM1', baud_rate=9600, databits=8, parity='N',
+                 stop_bits=1, timeout=0):
+        self.log = logging.getLogger('HandlingProtocol')
+        self.__serial_settings = dict(port_name=port_name, baud_rate=baud_rate,
+                                      timeout=0, parity=parity, stop_bits=stop_bits,
+                                      databits=databits)
+
+    def get_dict(self):
+        return self.__serial_settings
+
+    def __str__(self):
+        return "{0} (baud_rate={1}, databits={2}, parity={3}, stop_bits={4}, timeout={5})".format(
+            self.port, self.baud_rate, self.databits, self.parity, self.stop_bits, self.timeout
+        )
+
+    def __repr__(self):
+        return "SerialPortSettings() (port={0}, baud_rate={1}, databits={2}, " \
+               "parity={3}, stop_bits={4}, timeout={5})".format(
+               self.port, self.baud_rate, self.databits, self.parity, self.stop_bits, self.timeout
+        )
+
+    def parse(self, settings):
+        for opts in self.__serial_settings.keys():
+            if opts in settings:
+                if opts == 'parity':
+                    if settings[opts].lower().strip() == 'none':
+                        settings[opts] = serial.PARITY_NONE
+                    elif settings[opts].lower().strip() == 'even':
+                        settings[opts] = serial.PARITY_EVEN
+                    elif settings[opts].lower().strip() == 'odd':
+                        settings[opts] = serial.PARITY_ODD
+                    else:
+                        raise ValueError("Serial settings: invalid value parity: {}"
+                                         " [none, even, odd]".format(settings[opts]))
+                if opts == 'databits' and int(settings[opts]) not in (5, 6, 7, 8):
+                    raise ValueError("Serial settings: invalid value databits:"
+                                     " {} [{}]".format(settings[opts], (5, 6, 7, 8)))
+                if opts == 'stop_bits' and int(settings[opts]) not in (1, 1.5, 2):
+                    raise ValueError("Serial settings: invalid value stop bits:"
+                                     " {} [{}]".format(settings[opts], (1, 1.5, 2)))
+
+                self.__serial_settings[opts] = settings[opts]
+            else:
+                self.log.warning("!WARNING: Serial settings is redundant")
+
+    @property
+    def port(self):
+        return self.__serial_settings['port_name']
+
+    @port.setter
+    def port(self, value):
+        self.__serial_settings['port_name'] = value
+
+    @property
+    def baud_rate(self):
+        return self.__serial_settings['baud_rate']
+
+    @baud_rate.setter
+    def baud_rate(self, value):
+        self.__serial_settings['baud_rate'] = value
+
+    @property
+    def databits(self):
+        return self.__serial_settings['databits']
+
+    @databits.setter
+    def databits(self, value):
+        self.__serial_settings['databits'] = value
+
+    @property
+    def stop_bits(self):
+        return self.__serial_settings['stop_bits']
+
+    @stop_bits.setter
+    def stop_bits(self, value):
+        self.__serial_settings['stop_bits'] = value
+
+    @property
+    def parity(self):
+        return self.__serial_settings['parity']
+
+    @parity.setter
+    def parity(self, value):
+        self.__serial_settings['parity'] = value
+
+    @property
+    def timeout(self):
+        return self.__serial_settings['timeout']
+
+    @timeout.setter
+    def timeout(self, value):
+        self.__serial_settings['timeout'] = value
+
+
+if __name__ == '__main__':
+   pass

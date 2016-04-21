@@ -2,13 +2,12 @@
 
 import logging
 import serial
-from ImitatorDevice.settings_protocol import SettingsProtocol
 
 
 class SerialPortSettings(object):
     def __init__(self, port_name='COM1', baud_rate=9600, databits=8, parity='N',
                  stop_bits=1, timeout=0):
-        self.log = logging.getLogger('SettingsProtocol')
+        self.log = logging.getLogger('HandlingProtocol')
         self.__serial_settings = dict(port_name=port_name, baud_rate=baud_rate,
                                       timeout=0, parity=parity, stop_bits=stop_bits,
                                       databits=databits)
@@ -22,7 +21,7 @@ class SerialPortSettings(object):
         )
 
     def __repr__(self):
-        return "SerialPortSettings() (port={0}, baud_rate={1}, databits={2}, " \
+        return "SerialPortSettings (port={0}, baud_rate={1}, databits={2}, " \
                "parity={3}, stop_bits={4}, timeout={5})".format(
                self.port, self.baud_rate, self.databits, self.parity, self.stop_bits, self.timeout
         )
@@ -101,11 +100,4 @@ class SerialPortSettings(object):
 
 
 if __name__ == '__main__':
-    settings = SettingsProtocol(SerialPortSettings())
-    settings.parse('protocol_serial_device.conf')
-    print(settings.port_settings)
-    print(settings.handler_response(b'\xa5\x00\x1b\x04\x01\x00\xff\x07\xe6\x17'))
-    assert settings.handler_response(
-        b'\xa5\x00\x1b\x04\x01\x00\xff\x07\xe6\x17') == b'\xa5\x00\x1f\x04\x00\x00\x00\x00\x1b\x17'
-    assert settings.handler_response(
-        b'\xa5\x00\x1b\x04\x00\x00\x00\x00\x1f\x17') == b'\xa5\x00\x1f\x04\x00\x00\x00\x00\x1b\x17'
+   pass

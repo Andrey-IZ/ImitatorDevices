@@ -2,18 +2,18 @@
 
 import logging
 
-from ImitatorDevice.tools_parse_yaml_protocol import str_hex2byte, load_handler, \
+from ImitatorDevice.protocol.tools_parse_yaml_protocol import str_hex2byte, load_handler, \
     load_conf_test, str_dict_keys_lower
 
 
-class SettingsProtocol(object):
+class HandlingProtocol(object):
     """
     It implements  parsing and algorithmic handling loaded protocol configuration
     """
 
     def __init__(self, port_settings):
         self.__port_settings = port_settings
-        self.log = logging.getLogger('SettingsProtocol')
+        self.log = logging.getLogger('HandlingProtocol')
         self.__lists_protocol = []
         self.__count_req_generator_packet = 0
         self.__count_req_zip_packet = 0
@@ -104,7 +104,7 @@ class SettingsProtocol(object):
                 else:
                     return [func_handler_response], response
             elif order == 'zip' or order == 'semiduplex':
-                return SettingsProtocol.__genearate_list_packet(handler_dict_response, response, param_info)
+                return HandlingProtocol.__genearate_list_packet(handler_dict_response, response, param_info)
         elif isinstance(response, list):
             for resp in response:
                 list_resp.append(str_hex2byte(resp))
