@@ -14,12 +14,12 @@ class ServerDeviceImitator(object):
 
     def _reader(self):
         """loop forever and handling packets protocol"""
-        self.log.debug('{} thread started'.format(self.thread_name))
+        self.log.warning('{} thread started'.format(self.thread_name))
         try:
             self.reader()
         finally:
             self.alive = False
-            self.log.debug('{} thread terminated'.format(self.thread_name))
+            self.log.warning('{} thread terminated'.format(self.thread_name))
 
     def reader(self):
         pass
@@ -37,7 +37,7 @@ class ServerDeviceImitator(object):
 
     def stop(self):
         """Stop copying"""
-        self.log.debug('stopping')
+        self.log.debug('stopping thread: {}'.format(self.thread_name))
         if self.alive:
             self.alive = False
             self.thread_read.join()

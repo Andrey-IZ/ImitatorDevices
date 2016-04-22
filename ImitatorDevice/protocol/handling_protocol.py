@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 
 import logging
-
 from ImitatorDevice.protocol.tools_parse_yaml_protocol import str_hex2byte, load_handler, \
     load_conf_test, str_dict_keys_lower
+from ImitatorDevice.socket.socket_settings import SocketSettings
+from ImitatorDevice.serial.serial_port_settings import SerialPortSettings
 
 
 class HandlingProtocol(object):
@@ -11,8 +12,9 @@ class HandlingProtocol(object):
     It implements  parsing and algorithmic handling loaded protocol configuration
     """
 
-    def __init__(self, port_settings):
-        self.__port_settings = port_settings
+    def __init__(self):
+        self.__serial_port_settings = []
+        self.__socket_settings = []
         self.log = logging.getLogger('HandlingProtocol')
         self.__lists_protocol = []
         self.__count_req_generator_packet = 0
@@ -23,21 +25,50 @@ class HandlingProtocol(object):
         self.__is_processing_resp = False
 
     @property
-    def port_settings(self):
+    def serialport_settings(self):
         """
 
         :return: dictionary interface, generating from class PortSettings
         """
-        return self.__port_settings
+        return self.__serial_port_settings
 
-    @port_settings.setter
-    def port_settings(self, value):
+    @serialport_settings.setter
+    def serialport_settings(self, value):
         """
 
         :param value: dictionary interface, generating from class PortSettings
         :return:
         """
         self.__port_settings = value
+
+    @property
+    def socket_settings(self):
+        """
+
+        :return: dictionary interface, generating from class PortSettings
+        """
+        return self.__socket_settings
+
+    @socket_settings.setter
+    def socket_settings(self, value):
+        """
+
+        :param value: dictionary interface, generating from class PortSettings
+        :return:
+        """
+        self.__port_settings = value
+
+    @staticmethod
+    def __parse_interface(settings, class_settings):
+        obj = class_settings()
+        obj.parse(settings)
+        return obj
+
+    def __parse_settings(self, conf_settings):
+        conf_settings = str_dict_keys_lower(conf_settings)
+
+        self.__socket_settings = self.__parse_interface(conf_settings.get('socketsettings'), SocketSettings)
+        self.__serial_port_settings = self.__parse_interface(conf_settings.get('serialsettings'), SerialPortSettings)
 
     def parse(self, file_name):
         """
@@ -46,7 +77,7 @@ class HandlingProtocol(object):
         :return:
         """
         conf = load_conf_test(file_name)
-        self.port_settings.parse(conf[:1][0])
+        self.__parse_settings(conf[0])
 
         self.__lists_protocol.clear()
         for i, cmd in enumerate(conf[1:]):

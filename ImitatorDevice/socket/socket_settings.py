@@ -1,102 +1,91 @@
 #!/usr/bin/env python
 
 import logging
-import serial
+import socket
 
 
-class TcpSocketSettings(object):
-    def __init__(self, port_name='COM1', baud_rate=9600, databits=8, parity='N',
-                 stop_bits=1, timeout=0):
-        self.log = logging.getLogger('HandlingProtocol')
-        self.__serial_settings = dict(port_name=port_name, baud_rate=baud_rate,
-                                      timeout=0, parity=parity, stop_bits=stop_bits,
-                                      databits=databits)
+class SocketSettings(object):
+    def __init__(self, port='', host='', socket_type='', timeout=0, delay_response=0):
+        self.log = logging.getLogger('SocketSettings')
+        self.__socket_settings = dict(port=port, host=host, delay_response=delay_response,
+                                      timeout=timeout, socket_type=socket_type)
 
     def get_dict(self):
-        return self.__serial_settings
+        return self.__socket_settings
+
+    @property
+    def socket_type_str(self):
+        if self.socket_type == socket.SOCK_STREAM:
+            return 'TCP'
+        if self.socket_type == socket.SOCK_DGRAM:
+            return 'UDP'
 
     def __str__(self):
-        return "{0} (baud_rate={1}, databits={2}, parity={3}, stop_bits={4}, timeout={5})".format(
-            self.port, self.baud_rate, self.databits, self.parity, self.stop_bits, self.timeout
+        return "{1}:{0} (socket_type={2}, timeout={3}, delay_response={4})".format(
+            self.port, self.host, self.socket_type_str, self.timeout, self.delay_response
         )
 
     def __repr__(self):
-        return "SerialPortSettings() (port={0}, baud_rate={1}, databits={2}, " \
-               "parity={3}, stop_bits={4}, timeout={5})".format(
-               self.port, self.baud_rate, self.databits, self.parity, self.stop_bits, self.timeout
+        return "SocketSettings (host={1}, socket_type={2}, timeout={3}, delay_response={4})".format(
+               self.port, self.host, self.socket_type_str, self.timeout, self.delay_response
         )
 
     def parse(self, settings):
-        for opts in self.__serial_settings.keys():
-            if opts in settings:
-                if opts == 'parity':
-                    if settings[opts].lower().strip() == 'none':
-                        settings[opts] = serial.PARITY_NONE
-                    elif settings[opts].lower().strip() == 'even':
-                        settings[opts] = serial.PARITY_EVEN
-                    elif settings[opts].lower().strip() == 'odd':
-                        settings[opts] = serial.PARITY_ODD
-                    else:
-                        raise ValueError("Serial settings: invalid value parity: {}"
-                                         " [none, even, odd]".format(settings[opts]))
-                if opts == 'databits' and int(settings[opts]) not in (5, 6, 7, 8):
-                    raise ValueError("Serial settings: invalid value databits:"
-                                     " {} [{}]".format(settings[opts], (5, 6, 7, 8)))
-                if opts == 'stop_bits' and int(settings[opts]) not in (1, 1.5, 2):
-                    raise ValueError("Serial settings: invalid value stop bits:"
-                                     " {} [{}]".format(settings[opts], (1, 1.5, 2)))
+        if settings:
+            for opts in settings:
+                if opts in self.__socket_settings.keys():
+                    if opts == 'socket_type':
+                        if settings[opts].lower().strip() == 'tcp':
+                            settings[opts] = socket.SOCK_STREAM
+                        elif settings[opts].lower().strip() == 'udp':
+                            settings[opts] = socket.SOCK_DGRAM
+                        else:
+                            raise ValueError("Socket settings: invalid value socket_type: {}"
+                                             " [tcp, udp]".format(settings[opts]))
 
-                self.__serial_settings[opts] = settings[opts]
-            else:
-                self.log.warning("!WARNING: Serial settings is redundant")
+                    self.__socket_settings[opts] = settings[opts]
+                else:
+                    self.log.warning("!WARNING: Socket setting: '{}' is redundant".format(opts))
 
     @property
     def port(self):
-        return self.__serial_settings['port_name']
+        return self.__socket_settings['port']
 
     @port.setter
     def port(self, value):
-        self.__serial_settings['port_name'] = value
+        self.__socket_settings['port'] = value
 
     @property
-    def baud_rate(self):
-        return self.__serial_settings['baud_rate']
+    def host(self):
+        return self.__socket_settings['host']
 
-    @baud_rate.setter
-    def baud_rate(self, value):
-        self.__serial_settings['baud_rate'] = value
-
-    @property
-    def databits(self):
-        return self.__serial_settings['databits']
-
-    @databits.setter
-    def databits(self, value):
-        self.__serial_settings['databits'] = value
+    @host.setter
+    def host(self, value):
+        self.__socket_settings['host'] = value
 
     @property
-    def stop_bits(self):
-        return self.__serial_settings['stop_bits']
+    def socket_type(self):
+        return self.__socket_settings['socket_type']
 
-    @stop_bits.setter
-    def stop_bits(self, value):
-        self.__serial_settings['stop_bits'] = value
-
-    @property
-    def parity(self):
-        return self.__serial_settings['parity']
-
-    @parity.setter
-    def parity(self, value):
-        self.__serial_settings['parity'] = value
+    @socket_type.setter
+    def socket_type(self, value):
+        self.__socket_settings['socket_type'] = value
 
     @property
     def timeout(self):
-        return self.__serial_settings['timeout']
+        return self.__socket_settings['timeout']
 
     @timeout.setter
     def timeout(self, value):
-        self.__serial_settings['timeout'] = value
+        self.__socket_settings['timeout'] = value
+
+    @property
+    def delay_response(self):
+        return self.__socket_settings['delay_response']
+
+    @delay_response.setter
+    def delay_response(self, value):
+        self.__socket_settings['delay_response'] = value
 
 
 if __name__ == '__main__':

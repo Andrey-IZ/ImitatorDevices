@@ -15,20 +15,20 @@ def load_conf_test(filename):
     return res
 
 
-def load_handler(file_name, function_name):
+def load_handler(module_name, function_name):
     """
     Loads function-handler from file, which specify to configuration's file
-    :param file_name:
+    :param module_name:
     :param function_name:
     :return: function object of handler
     """
     if isinstance(function_name, list):
         list_func = list()
         for function in function_name:
-            list_func.append(__import_function(file_name, function))
+            list_func.append(__import_function(module_name, function))
         return list_func
     else:
-        return [__import_function(file_name, function_name)]
+        return [__import_function(module_name, function_name)]
 
 
 def __import_function(file_name, function_name):
