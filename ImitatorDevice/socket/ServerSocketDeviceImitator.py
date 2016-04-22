@@ -1,14 +1,10 @@
 #!/usr/bin/env python
 # -*- coding=utf-8 -*-
 
-import select
-import time
 import errno
 import socket
 from ImitatorDevice.server_device_imitator import ServerDeviceImitator
 from tools_binary import byte2hex_str
-import socketserver
-from ImitatorDevice.socket.socket_settings import SocketSettings
 
 
 class SocketBindPortException(socket.error):
@@ -16,18 +12,6 @@ class SocketBindPortException(socket.error):
 
 
 class SocketDeviceException(Exception):
-    pass
-
-
-class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
-    def handle(self):
-        data = self.request.recv(1024)
-        cur_thread = threading.current_thread()
-        response = "{}: {}".format(cur_thread.name, data)
-        self.request.sendall(response)
-
-
-class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     pass
 
 
@@ -72,15 +56,6 @@ class ServerSocketDeviceimitator(ServerDeviceImitator):
         try:
             self.socket.bind((self.socket_settings.host, self.socket_settings.port))
             self.socket.setblocking(0)
-
-            if self.socket_settings.socket_type == socket.SOCK_STREAM:
-                pass
-                # self.socket.connect((self.socket_settings.host, self.socket_settings.port))
-                # self.socket.settimeout(0)
-            if self.socket_settings.socket_type == socket.SOCK_DGRAM:
-                pass
-                # self.socket.setblocking(0)
-                # self.socket.bind((self.socket_settings.host, self.socket_settings.port))
         except socket.error as err:
             exc_str = "!ERROR:  Bind socket failed on port {}. Error message: {}".format(self.socket_settings.port,
                                                                                          err.args)

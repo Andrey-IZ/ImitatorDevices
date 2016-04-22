@@ -4,7 +4,6 @@
 import serial
 from ImitatorDevice.server_device_imitator import ServerDeviceImitator
 from tools_binary import byte2hex_str
-from ImitatorDevice.serial.serial_port_settings import SerialPortSettings
 
 
 class SerialOpenPortException(serial.SerialException):
