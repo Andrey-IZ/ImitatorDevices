@@ -8,10 +8,11 @@ import importlib
 
 
 def load_conf_test(filename):
-    yml = yaml.load_all(open(filename))
     res = []
-    for doc in yml:
-        res.append(doc)
+    with open(filename, 'rt') as fd:
+        yml = yaml.safe_load_all(fd)
+        for doc in yml:
+            res.append(doc)
     return res
 
 

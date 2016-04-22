@@ -65,11 +65,14 @@ class ServerSocketDeviceimitator(ServerDeviceImitator):
 
     def listen(self, amount_tcp_clients=1, thread_name='socket-reader'):
         if self.socket:
+            name = self.socket.getsockname()[0] + ':' + str(self.socket.getsockname()[1])
+            super().listen(thread_name=name)
             if self.socket_settings.socket_type == socket.SOCK_STREAM:
                 self.socket.listen(amount_tcp_clients)
-                super().listen(thread_name='tcp-reader')
+                # super().listen(thread_name='tcp-reader')
             elif self.socket_settings.socket_type == socket.SOCK_DGRAM:
-                super().listen(thread_name='udp-reader')
+                pass
+                # super().listen(thread_name='udp-reader')
             else:
                 return False
             return True
@@ -157,15 +160,17 @@ class ServerSocketDeviceimitator(ServerDeviceImitator):
                             data_recv = client.recv(self.buffer_size)
                         except socket.error as err:  # данных нет
                             if err.args[0] == errno.EWOULDBLOCK or err.args[0] == errno.EAGAIN:
-                                # or e.args[0] == errno.WSAENOTCONN:
-                                # print('EWOULDBLOCK')
+                                # self.log.debug('EWOULDBLOCK')
                                 # time.sleep(0.1)           # short delay, no tight loops
                                 continue
                             else:
                                 client.close()
+                                self.log.error('Connection close')
                                 raise Exception("error") from err
                         else:  # данные есть
-                            if data_recv:
+                            if not data_recv:
+                                break
+                            else:
                                 self.log.warning("======================================")
                                 self.log.warning("-> recv: {}".format((byte2hex_str(data_recv))))
                                 list_packets = self.handler_response(data_recv)
@@ -174,7 +179,7 @@ class ServerSocketDeviceimitator(ServerDeviceImitator):
                                         if packet:
                                             self.log.warning("<- send: {}".format(byte2hex_str(packet)))
                                             client.send(packet)
-                                        # -----------------------------------------------
+        # ----------------------------------------------------------------------------
         except socket.error as err:
             exc_str = "!ERROR: Something else happened on read/write to socket"
             self.log.error(exc_str)

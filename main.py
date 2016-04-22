@@ -3,15 +3,14 @@
 
 import logging
 import sys
-
 from ImitatorDevice.protocol.handling_protocol import HandlingProtocol
 from ImitatorDevice.serial.ServerSerialDeviceImitator import *
 from ImitatorDevice.socket.ServerSocketDeviceImitator import *
-from imitator_serial_device_params import ImitatorSerialDeviceParams
+from imitator_serial_device_params import ImitatorSeriaSocketlDeviceParams
 import handlers_ukcu
 
 
-def serial_server_start():
+def serial_server_start(settings_conf):
     is_serial_server_start = False
     serial_server = None
     try:
@@ -31,7 +30,7 @@ def serial_server_start():
     return serial_server
 
 
-def socket_server_start():
+def socket_server_start(settings_conf):
     is_socket_server_start = False
     socket_server = None
     try:
@@ -50,9 +49,10 @@ def socket_server_start():
             logging.info('Disconnected socket interface: {}'.format(socket_server))
     return socket_server
 
+
 if __name__ == '__main__':
 
-    params = ImitatorSerialDeviceParams(path_to_conf='protocol_serial_device.conf')
+    params = ImitatorSeriaSocketlDeviceParams(path_to_conf='protocol_serial_device.conf')
     params.parse_args()
 
     file_conf = params.path_to_conf
@@ -61,57 +61,82 @@ if __name__ == '__main__':
     logging.info("Level output messages set to " + params.level_str)
 
     cmd = ''
+    settings_conf = HandlingProtocol()
 
-    while True:
+    if params.run_serial or params.run_socket:
+        print(params)
+        while True:
+            logging.warning("Imitator serial devices started")
+            print(
+                u">>> Enter 'exit' or Ctrl+C enter for quit. "
+                u"Enter 'start' to start server. \n>>> Enter 'restart' for restart servers. ")
+            print(u">>> Enter 'reconf' for reload configuration file without restart of servers")
 
-        settings_conf = HandlingProtocol()
-        logging.info("Parsing configuration file: {}".format(file_conf))
-        settings_conf.parse(file_conf)
-        logging.info("Imitator serial devices start")
-        print(
-            u">>> Imitator serial device is started.  Enter 'exit' or Ctrl+C enter for quit. "
-            u"Enter 'start' to start server")
-        try:
+            logging.info("Parsing configuration file: {}".format(file_conf))
             try:
-                serial_server = serial_server_start()
-                socket_server = socket_server_start()
+                settings_conf.parse(file_conf)
+            except ImportError as err:
+                logging.error(err)
 
-                if not serial_server and not socket_server:
-                    print(u">>> Imitator device was stop")
-                    break
-                while True:
-                    cmd = input()
-                    if cmd == 'stop' or cmd == 'exit' or cmd == 'restart':
-                        str_info = '>> Imitator device is ' + cmd + 'ed'
-                        logging.debug(str_info)
-                        print(str_info)
+
+            serial_server = None
+            socket_server = None
+            try:
+                try:
+                    if params.run_serial:
+                        serial_server = serial_server_start(settings_conf)
+                    if params.run_socket:
+                        socket_server = socket_server_start(settings_conf)
+
+                    if not serial_server and not socket_server:
+                        print(u">>> Imitator device was stop")
                         break
+                    while True:
+                        cmd = input()
+                        if cmd == 'stop' or cmd == 'exit' or cmd == 'restart':
+                            str_info = '>> Imitator device is ' + cmd + 'ed'
+                            logging.warning(str_info)
+                            print(str_info)
+                            break
+                        elif cmd == 'reconf':
+                            settings_conf.parse(params.path_to_conf)
+                            logging.warning('File configuration: {} was reload'.format(params.path_to_conf))
 
-            except SerialDeviceException as err:
-                logging.error("!Error: occurrence with serial port server: {}".format(err))
-                sys.stdout.write('\n')
-                break
+                except SerialDeviceException as err:
+                    logging.error("!Error: occurrence with serial port server: {}".format(err))
+                    sys.stdout.write('\n')
+                    raise KeyboardInterrupt()
+
+                if cmd == 'exit':
+                    break
+
+                while True:
+                    if cmd == 'restart':
+                        logging.warning('***************************************')
+                        break
+                    cmd = input(">>> Enter 'start' to start server: ")
+                    if cmd == 'start':
+                        logging.warning('***************************************')
+                        break
+                    if cmd == 'exit':
+                        raise KeyboardInterrupt()
+                    break
+            except KeyboardInterrupt:
+                pass
+            except EOFError:
+                pass
             finally:
+                print('FINALLY')
                 if serial_server:
+                    print('SER FINALLY')
                     serial_server.stop()
+                    print('SER2 FINALLY')
+                print('END1 FINALLY')
                 if socket_server:
                     socket_server.stop()
-                logging.info('Disconnected all interfaces')
-            if cmd == 'exit':
+                print('END2 FINALLY')
+                logging.warning('Disconnected all interfaces')
                 break
-
-            while True:
-                if cmd == 'restart':
-                    logging.warning('***************************************')
-                    break
-                cmd = input(">>> Enter 'start' to start server: ")
-                if cmd == 'start':
-                    logging.warning('***************************************')
-                    break
-                if cmd != 'exit':
-                    continue
-                break
-            break
-        except KeyboardInterrupt:
-            sys.stdout.write('\n')
+    else:
+        logging.error("!Error: Not defined start interface !")
     logging.info('--- exit ---')
