@@ -8,6 +8,7 @@ from ImitatorDevice.serial.ServerSerialDeviceImitator import *
 from ImitatorDevice.socket.ServerSocketDeviceImitator import *
 from imitator_serial_socket_device_params import ImitatorSeriaSocketlDeviceParams
 import handlers_ukcu
+import handlers_pchv3
 
 
 def serial_server_start(settings_conf):
@@ -64,7 +65,6 @@ if __name__ == '__main__':
     settings_conf = HandlingProtocol()
 
     if params.run_serial or params.run_socket:
-        print(params)
         while True:
             logging.warning("Imitator serial devices started")
             print(
@@ -75,9 +75,9 @@ if __name__ == '__main__':
             logging.info("Parsing configuration file: {}".format(file_conf))
             try:
                 settings_conf.parse(file_conf)
-            except ImportError as err:
-                logging.error(err)
-
+            except Exception as err:
+                logging.error('>>> {}'.format(err))
+                raise Exception(err) from err
 
             serial_server = None
             socket_server = None
@@ -94,7 +94,7 @@ if __name__ == '__main__':
                     while True:
                         cmd = input()
                         if cmd == 'stop' or cmd == 'exit' or cmd == 'restart':
-                            str_info = '>> Imitator device is ' + cmd + 'ed'
+                            str_info = '>>> Imitator device is ' + cmd + 'ed'
                             logging.warning(str_info)
                             print(str_info)
                             break
@@ -120,18 +120,19 @@ if __name__ == '__main__':
                         break
                     if cmd == 'exit':
                         raise KeyboardInterrupt()
-                    break
+                continue
             except KeyboardInterrupt:
-                pass
+                print('KeyboardInterrupt')
+                break
             except EOFError:
-                pass
+                break
             finally:
                 try: serial_server.stop()
                 except: pass
                 try: socket_server.stop()
                 except: pass
-                logging.warning('Disconnected all interfaces')
-                break
+                logging.warning(' -- Disconnected all interfaces --')
+                # break
     else:
         logging.error("!Error: Not defined start interface !")
     logging.info('--- exit ---')

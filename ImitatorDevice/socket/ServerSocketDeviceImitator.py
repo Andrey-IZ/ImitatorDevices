@@ -42,6 +42,7 @@ class ServerSocketDeviceimitator(ServerDeviceImitator):
         self.func_process_events = None
         self.handler_response = settings_conf.handler_response
         self.socket_settings = settings_conf.socket_settings
+        self.handler_emit_send = settings_conf.handler_emit_send
         self.__init_socket()
 
     def __init_socket(self):
@@ -147,38 +148,62 @@ class ServerSocketDeviceimitator(ServerDeviceImitator):
         try:
             while self.alive:
                 try:
-                    client, addr = self.socket.accept()
-                except socket.error:  # данных нет
-                    pass  # тут ставим код выхода
-                else:  # данные есть
-                    self.log.warning('Connecting client from: {}'.format(addr))
-                    client.setblocking(0)  # снимаем блокировку и тут тоже
-                    # если в блоке except вы выходите,
-                    # ставить else и отступ не нужно
-                    while self.alive:
-                        try:
-                            data_recv = client.recv(self.buffer_size)
-                        except socket.error as err:  # данных нет
-                            if err.args[0] == errno.EWOULDBLOCK or err.args[0] == errno.EAGAIN:
-                                # self.log.debug('EWOULDBLOCK')
-                                # time.sleep(0.1)           # short delay, no tight loops
-                                continue
-                            else:
-                                client.close()
-                                self.log.error('Connection close')
-                                raise Exception("error") from err
-                        else:  # данные есть
-                            if not data_recv:
-                                break
-                            else:
-                                self.log.warning("======================================")
-                                self.log.warning("-> recv: {}".format((byte2hex_str(data_recv))))
-                                list_packets = self.handler_response(data_recv)
-                                if list_packets:
-                                    for packet in list_packets:
-                                        if packet:
-                                            self.log.warning("<- send: {}".format(byte2hex_str(packet)))
-                                            client.send(packet)
+                    try:
+                        client, addr = self.socket.accept()
+                    except socket.error:  # данных нет
+                        pass  # тут ставим код выхода
+                    else:  # данные есть
+                        self.log.error('Connecting client from: {}'.format(addr))
+                        client.setblocking(0)  # снимаем блокировку и тут тоже
+
+                        for packet in self.handler_emit_send(is_connect=True):
+                            if packet:
+                                client.send(packet)
+                                self.log.warning("<- send: {}".format(byte2hex_str(packet)))
+
+                        # если в блоке except вы выходите,
+                        # ставить else и отступ не нужно
+                        while self.alive:
+                            try:
+                                for packet in self.handler_emit_send(is_timeout=True):
+                                    if packet:
+                                        client.send(packet)
+                                        self.log.warning("<- send: {} <timeout>".format(byte2hex_str(packet)))
+
+                                data_recv = client.recv(self.buffer_size)
+                            except socket.error as err:  # данных нет
+                                if err.args[0] == errno.EWOULDBLOCK or err.args[0] == errno.EAGAIN:
+                                    # self.log.debug('EWOULDBLOCK')
+                                    # time.sleep(0.1)           # short delay, no tight loops
+                                    continue
+                                elif err.args[0] == errno.WSAECONNABORTED:
+                                    self.log.error('>> Client closed connection from {}'.format(addr))
+                                    break
+                                elif err.args[0] == errno.WSAECONNRESET:
+                                    self.log.error('>> Client break down connection from {}'.format(addr))
+                                    break
+                                else:
+                                    client.close()
+                                    self.log.error('Connection close')
+                                    raise Exception("error") from err
+                            else:  # данные есть
+                                if not data_recv:
+                                    break
+                                else:
+                                    self.log.warning("======================================")
+                                    self.log.warning("-> recv: {}".format((byte2hex_str(data_recv))))
+                                    list_packets = self.handler_response(data_recv)
+                                    if list_packets:
+                                        for packet in list_packets:
+                                            if packet:
+                                                self.log.warning("<- send: {}".format(byte2hex_str(packet)))
+                                                client.send(packet)
+                except socket.error as err:
+                    if err.args[0] == errno.WSAECONNABORTED:
+                        self.log.error('Connection closed from {}'.format(addr))
+                        continue
+                    else:
+                        raise socket.error(err)
         # ----------------------------------------------------------------------------
         except socket.error as err:
             exc_str = "!ERROR: Something else happened on read/write to socket"

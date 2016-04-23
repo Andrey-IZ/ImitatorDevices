@@ -1,10 +1,18 @@
 #!/usr/bin/env python
 
 import logging
+import time
+from tools_math import transpose_matrix
 from ImitatorDevice.protocol.tools_parse_yaml_protocol import str_hex2byte, load_handler, \
     load_conf_test, str_dict_keys_lower
 from ImitatorDevice.socket.socket_settings import SocketSettings
 from ImitatorDevice.serial.serial_port_settings import SerialPortSettings
+
+CH_ESTRIGGER_CON, CH_ESTRIGGER_TIMEOUT = ('on_connection', 'on_timeout')
+CH_ORDER_GENERATOR, CH_ORDER_ZIP, CH_ORDER_SEMIDUPLEX = ('generator', 'zip', 'semiduplex')
+KW_DOC, KW_RESPONSE, KW_REQUEST, KW_EMITSEND, KW_EMIT_TRIGGER, KW_EMIT_TIMEOUT, KWHANDLER_RESPONSE, KWHANDLER_REQUEST = (
+    'doc', 'response', 'request', 'emit_send', 'trigger', 'timeout', 'handler_response', 'handler_request')
+KWORDER, KWDELAY_RESPONSE = ('order', 'delay_response')
 
 
 class HandlingProtocol(object):
@@ -23,6 +31,18 @@ class HandlingProtocol(object):
         self.__count_protocol = 0
         self.__len_list_porotocol = 0
         self.__is_processing_resp = False
+
+        self.__list_emit_send = {CH_ESTRIGGER_CON: [[], []], CH_ESTRIGGER_TIMEOUT: []}
+        self.__len_list_emit_send = {CH_ESTRIGGER_CON: 0, CH_ESTRIGGER_TIMEOUT: 0}
+        self.__time_begin_emit_send = time.time()
+
+    @property
+    def is_emit_send_on_connect(self):
+        return self.__len_list_emit_send[CH_ESTRIGGER_CON] > 0
+
+    @property
+    def is_emit_send_on_timeout(self):
+        return self.__len_list_emit_send[CH_ESTRIGGER_TIMEOUT] > 0
 
     @property
     def serialport_settings(self):
@@ -70,6 +90,70 @@ class HandlingProtocol(object):
         self.__socket_settings = self.__parse_interface(conf_settings.get('socketsettings'), SocketSettings)
         self.__serial_port_settings = self.__parse_interface(conf_settings.get('serialsettings'), SerialPortSettings)
 
+    def handler_emit_send(self, is_connect=False, is_timeout=False) -> [bytes]:
+        if self.is_emit_send_on_connect and is_connect:
+            self.log.warning('!WARNING: Emit send packets on connection: '
+                             '{}'.format(self.__list_emit_send[CH_ESTRIGGER_CON][1]))
+            self.__time_begin_emit_send = time.time()
+            return self.__list_emit_send[CH_ESTRIGGER_CON][0]
+        if self.is_emit_send_on_timeout and is_timeout:
+            list_emit_send = []
+            docs = []
+            for timeout, list_send, doc in self.__list_emit_send[CH_ESTRIGGER_TIMEOUT]:
+                # self.log.debug('time = {}'.format(time.time() - self.__time_begin_emit_send))
+                if time.time() - self.__time_begin_emit_send >= timeout:
+                    list_emit_send.extend(*list_send)
+                    docs.append(doc)
+            if list_emit_send:
+                self.log.warning('!WARNING: Emit send packet on timeout = {} sec: {}'.format(timeout, docs))
+                self.__time_begin_emit_send = time.time()
+                return list_emit_send
+        return []
+
+    def __parse_emit_send(self, dict_emit, handler_dict_response, response, param_info):
+        if isinstance(dict_emit, dict):
+            trigger = dict_emit.get(KW_EMIT_TRIGGER, '')
+            if trigger:
+                try:
+                    list_send = HandlingProtocol.__genearate_list_packet(handler_dict_response, response, param_info)
+                except Exception as err:
+                    raise ValueError(err) from err
+                if list_send:
+                    doc, order = param_info
+                    if isinstance(trigger, list):
+                        for trig in trigger:
+                            self.__add_list_emit_send(dict_emit, doc, list_send, trig)
+                    elif isinstance(trigger, str):
+                        trigger = trigger.lower().strip()
+                        self.__add_list_emit_send(dict_emit, doc, list_send, trigger)
+            else:
+                raise ValueError('!Error: trigger into emit_send is not unknown: {}',
+                                 dict_emit.get(KW_EMIT_TRIGGER, ''))
+        return None
+
+    def __add_list_emit_send(self, dict_emit, doc, list_send, trigger):
+        if trigger == CH_ESTRIGGER_CON:  # on_connection
+            self.__list_emit_send[CH_ESTRIGGER_CON][0].extend(*list_send)
+            self.__list_emit_send[CH_ESTRIGGER_CON][1].append(doc)
+            self.__len_list_emit_send[CH_ESTRIGGER_CON] += len(self.__list_emit_send[CH_ESTRIGGER_CON])
+        if trigger == CH_ESTRIGGER_TIMEOUT:  # on_timeout
+            timeout = dict_emit.get(KW_EMIT_TIMEOUT, 1)
+            self.__list_emit_send[CH_ESTRIGGER_TIMEOUT].append((timeout, list_send, doc))
+            self.__len_list_emit_send[CH_ESTRIGGER_TIMEOUT] += len(
+                self.__list_emit_send[CH_ESTRIGGER_TIMEOUT])
+        elif trigger != CH_ESTRIGGER_CON:
+            raise ValueError('!Error: timeout into emit_send is not unknown: {}',
+                             dict_emit.get(KW_EMIT_TIMEOUT, ''))
+
+    def __init_parse(self):
+        self.__lists_protocol.clear()
+        for item in self.__len_list_emit_send:
+            self.__len_list_emit_send[item] = 0
+
+        self.__list_emit_send[CH_ESTRIGGER_TIMEOUT].clear()
+        self.__list_emit_send[CH_ESTRIGGER_CON][0].clear()
+        self.__list_emit_send[CH_ESTRIGGER_CON][1].clear()
+
     def parse(self, file_name):
         """
         It makes parsing file_name and generates lists of protocol
@@ -79,7 +163,8 @@ class HandlingProtocol(object):
         conf = load_conf_test(file_name)
         self.__parse_settings(conf[0])
 
-        self.__lists_protocol.clear()
+        self.__init_parse()
+
         for i, cmd in enumerate(conf[1:]):
             cmd = str_dict_keys_lower(cmd)
             doc = cmd.get('doc')
@@ -87,11 +172,20 @@ class HandlingProtocol(object):
                 raise ValueError(
                     u"Parse error: in conf didn't find parameter doc or it is empty: command = {}".format(i))
             doc = doc.strip()
-            request = cmd.get('request')
-            response = cmd.get('response')
 
-            order = cmd.get('order', 'zip').lower()
             handler_response = cmd.get('handler_response')
+            response = cmd.get('response')
+            order = cmd.get('order', 'zip').lower()
+
+            emit_send = cmd.get('emit_send', '')
+            if emit_send != '':
+                try:
+                    self.__parse_emit_send(cmd.get('emit_send'), handler_response, response, (doc, order))
+                except Exception as err:
+                    self.log.error(err)
+                continue
+
+            request = cmd.get('request')
             handler_request = cmd.get('handler_request')
 
             list_req = self.__genearate_list_packet(handler_request, request, (doc, order))
@@ -121,6 +215,7 @@ class HandlingProtocol(object):
             len_list = len(list_unique)
             if len_set != len_list:
                 raise ValueError("!! Error: Generating list is not unique: {0} vs {1}".format(len_set, len_list))
+
         self.__len_list_porotocol = len(self.__lists_protocol)
         return self.__len_list_porotocol
 
@@ -148,14 +243,19 @@ class HandlingProtocol(object):
         list_packet = []
         if isinstance(handler_func_dict, dict):
             func_handler = load_handler(**handler_func_dict)
+            doc, order = param_info
             try:
                 for func in func_handler:
                     if data_packet is None:
-                        list_packet.extend(func())
+                        res = func()
                     else:
-                        list_packet.extend(func(data_packet))
+                        res = func(data_packet)
+                    if res:
+                        if order == CH_ORDER_GENERATOR:
+                            list_packet.extend(res)
+                        else:
+                            list_packet.append(res)
             except TypeError as e:
-                doc, order = param_info
                 raise TypeError(
                     "Wrong defined type order interaction: doc={0}, order={1}, {2}".format(doc, order, e.args))
         elif isinstance(data_packet, list):
@@ -179,17 +279,17 @@ class HandlingProtocol(object):
                         else:
                             write_data = generator_resp(packet_response, response)
 
-                        self.log.info(u'!INFO: Handling command: "{0}", function = "{2}", order = {1}; '
-                                      u'packet count = {3} of {4}'.format(doc, order, generator_resp.__name__,
-                                                                          self.__count_req_generator_packet + 1,
-                                                                          len_list_req))
+                        self.log.warning(u'!WARNING Handling command: "{0}", function = "{2}", order = {1}; '
+                                         u'packet count = {3} of {4}'.format(doc, order, generator_resp.__name__,
+                                                                             self.__count_req_generator_packet + 1,
+                                                                             len_list_req))
                         self.__count_req_generator_packet = self.__increment_counter(self.__count_req_generator_packet,
                                                                                      len_list_req)
                         if write_data is not None:
                             return [write_data]
                         else:
                             raise ValueError(
-                                "Error at time processing generation response: {}".format(
+                                "!Error at time processing generation response: {}".format(
                                     generator_resp.__name__))
                     if self.__count_req_generator_packet > 0:
                         self.log.error(
@@ -270,7 +370,7 @@ class HandlingProtocol(object):
             value += 1
         return value
 
-    def handler_response(self, bytes_recv):
+    def handler_response(self, bytes_recv) -> [bytes]:
         """
 
         :param bytes_recv: received bytes array

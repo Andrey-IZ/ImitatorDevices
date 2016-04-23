@@ -1,12 +1,6 @@
 #!/usr/bin/env python
-from math import log
+
 import struct
-
-
-def sizeof(n):
-    if n == 0:
-        return 1
-    return int(log(n, 256)) + 1
 
 
 commands = dict(SetDirection=0x01B, SetSignals=0x11B, GetSignals=0x21B)
@@ -64,7 +58,7 @@ class UkcuPacket(object):
         return bytes(array)
 
 
-def send_command(code, data, expected_data=0, timeout=0):
+def __send_command(code, data, expected_data=0, timeout=0):
     """
 
     :param expected_data:
@@ -100,15 +94,15 @@ def handler_ukcu_response(request_data, response_data=None):
 
 def handler_request_read_low():
     list_data = list()
-    list_data.append(send_command(commands.get('SetSignals'), 0x01000004))
-    list_data.append(send_command(commands.get('GetSignals'), 0x0000FF00))
+    list_data.append(__send_command(commands.get('SetSignals'), 0x01000004))
+    list_data.append(__send_command(commands.get('GetSignals'), 0x0000FF00))
     return list_data
 
 
 def handler_request_read_high():
     list_data = list()
-    list_data.append(send_command(commands.get('SetSignals'), 0x01000006))
-    list_data.append(send_command(commands.get('GetSignals'), 0x0000FF00))
+    list_data.append(__send_command(commands.get('SetSignals'), 0x01000006))
+    list_data.append(__send_command(commands.get('GetSignals'), 0x0000FF00))
     return list_data
 
 
@@ -118,14 +112,14 @@ def handler_request_write(request_data):
     :param request_data:
     :return:
     """
-    list_data = [send_command(commands.get('SetSignals'), 0x01000004 | (request_data & 0x00F0) << 4),
-                 send_command(commands.get('SetSignals'), 0x01000000 | (request_data & 0x00F0) << 4),
-                 send_command(commands.get('SetSignals'), 0x01000000 | (request_data & 0x000F) << 8),
-                 send_command(commands.get('SetSignals'), 0x01000004 | (request_data & 0x000F) << 8),
-                 send_command(commands.get('SetSignals'), 0x01000006 | (request_data & 0xF000) >> 4),
-                 send_command(commands.get('SetSignals'), 0x01000002 | (request_data & 0xF000) >> 4),
-                 send_command(commands.get('SetSignals'), 0x01000002 | (request_data & 0x0F00)),
-                 send_command(commands.get('SetSignals'), 0x01000006 | (request_data & 0x0F00))]
+    list_data = [__send_command(commands.get('SetSignals'), 0x01000004 | (request_data & 0x00F0) << 4),
+                 __send_command(commands.get('SetSignals'), 0x01000000 | (request_data & 0x00F0) << 4),
+                 __send_command(commands.get('SetSignals'), 0x01000000 | (request_data & 0x000F) << 8),
+                 __send_command(commands.get('SetSignals'), 0x01000004 | (request_data & 0x000F) << 8),
+                 __send_command(commands.get('SetSignals'), 0x01000006 | (request_data & 0xF000) >> 4),
+                 __send_command(commands.get('SetSignals'), 0x01000002 | (request_data & 0xF000) >> 4),
+                 __send_command(commands.get('SetSignals'), 0x01000002 | (request_data & 0x0F00)),
+                 __send_command(commands.get('SetSignals'), 0x01000006 | (request_data & 0x0F00))]
     return list_data
 
 
@@ -138,8 +132,8 @@ def handler_request_write_read_low(request_data):
 
 def handler_request_setup_ukcu():
     list_data = list()
-    list_data.append(send_command(commands.get('SetDirection'), 0x0100FF07))
-    list_data.append(send_command(commands.get('SetDirection'), 0x0))
+    list_data.append(__send_command(commands.get('SetDirection'), 0x0100FF07))
+    list_data.append(__send_command(commands.get('SetDirection'), 0x0))
     return list_data
 
 
@@ -147,29 +141,29 @@ def handler_request_test_ukcu():
     p = [0xFE, 0xFD, 0xFB, 0xF7, 0xEF, 0xDF, 0xBF, 0x7F, 0xFF]
     list_data = list()
     for i in p:
-        list_data.append(send_command(commands.get('SetSignals'), 0x01000004 | ((i & 0xF0) << 4)))
-        list_data.append(send_command(commands.get('SetSignals'), 0x01000000 | ((i & 0xF0) << 4)))
-        list_data.append(send_command(commands.get('SetSignals'), 0x01000000 | ((i & 0x0F) << 8)))
-        list_data.append(send_command(commands.get('SetSignals'), 0x01000004 | ((i & 0x0F) << 8)))
-        list_data.append(send_command(commands.get('SetSignals'), 0x01000A06))
-        list_data.append(send_command(commands.get('SetSignals'), 0x01000A02))
-        list_data.append(send_command(commands.get('SetSignals'), 0x01000402))
-        list_data.append(send_command(commands.get('SetSignals'), 0x01000406))
-        list_data.append(send_command(commands.get('SetSignals'), 0x01000004))
-        list_data.append(send_command(commands.get('GetSignals'), 0x0000FF00, expected_data=(i << 8)))
+        list_data.append(__send_command(commands.get('SetSignals'), 0x01000004 | ((i & 0xF0) << 4)))
+        list_data.append(__send_command(commands.get('SetSignals'), 0x01000000 | ((i & 0xF0) << 4)))
+        list_data.append(__send_command(commands.get('SetSignals'), 0x01000000 | ((i & 0x0F) << 8)))
+        list_data.append(__send_command(commands.get('SetSignals'), 0x01000004 | ((i & 0x0F) << 8)))
+        list_data.append(__send_command(commands.get('SetSignals'), 0x01000A06))
+        list_data.append(__send_command(commands.get('SetSignals'), 0x01000A02))
+        list_data.append(__send_command(commands.get('SetSignals'), 0x01000402))
+        list_data.append(__send_command(commands.get('SetSignals'), 0x01000406))
+        list_data.append(__send_command(commands.get('SetSignals'), 0x01000004))
+        list_data.append(__send_command(commands.get('GetSignals'), 0x0000FF00, expected_data=(i << 8)))
     return list_data
 
 
 def handler_request_reset_ukcu():
     list_data = list()
-    list_data.append(send_command(commands.get('SetSignals'), 0x01000A04))
-    list_data.append(send_command(commands.get('SetSignals'), 0x01000A00))
-    list_data.append(send_command(commands.get('SetSignals'), 0x01000500))
-    list_data.append(send_command(commands.get('SetSignals'), 0x01000504))
-    list_data.append(send_command(commands.get('SetSignals'), 0x01000506))
-    list_data.append(send_command(commands.get('SetSignals'), 0x01000502))
-    list_data.append(send_command(commands.get('SetSignals'), 0x01000A02))
-    list_data.append(send_command(commands.get('SetSignals'), 0x01000A06))
+    list_data.append(__send_command(commands.get('SetSignals'), 0x01000A04))
+    list_data.append(__send_command(commands.get('SetSignals'), 0x01000A00))
+    list_data.append(__send_command(commands.get('SetSignals'), 0x01000500))
+    list_data.append(__send_command(commands.get('SetSignals'), 0x01000504))
+    list_data.append(__send_command(commands.get('SetSignals'), 0x01000506))
+    list_data.append(__send_command(commands.get('SetSignals'), 0x01000502))
+    list_data.append(__send_command(commands.get('SetSignals'), 0x01000A02))
+    list_data.append(__send_command(commands.get('SetSignals'), 0x01000A06))
     return list_data
 
 
