@@ -32,7 +32,7 @@ class HandlingProtocol(object):
         self.__len_list_porotocol = 0
         self.__is_processing_resp = False
 
-        self.__list_emit_send = {CH_ESTRIGGER_CON: [[], []], CH_ESTRIGGER_TIMEOUT: []}
+        self.__list_emit_send = {CH_ESTRIGGER_CON: [[], []], CH_ESTRIGGER_TIMEOUT: [[], []]}
         self.__len_list_emit_send = {CH_ESTRIGGER_CON: 0, CH_ESTRIGGER_TIMEOUT: 0}
         self.__time_begin_emit_send = time.time()
 
@@ -94,19 +94,21 @@ class HandlingProtocol(object):
         if self.is_emit_send_on_connect and is_connect:
             self.log.warning('!WARNING: Emit send packets on connection: '
                              '{}'.format(self.__list_emit_send[CH_ESTRIGGER_CON][1]))
-            self.__time_begin_emit_send = time.time()
+            tm = time.time()
+            for i in range(self.__len_list_emit_send[CH_ESTRIGGER_TIMEOUT]):
+                self.__list_emit_send[CH_ESTRIGGER_TIMEOUT][1][i] = tm
+
             return self.__list_emit_send[CH_ESTRIGGER_CON][0]
         if self.is_emit_send_on_timeout and is_timeout:
             list_emit_send = []
             docs = []
-            for timeout, list_send, doc in self.__list_emit_send[CH_ESTRIGGER_TIMEOUT]:
-                # self.log.debug('time = {}'.format(time.time() - self.__time_begin_emit_send))
-                if time.time() - self.__time_begin_emit_send >= timeout:
+            for i, (timeout, list_send, doc) in enumerate(self.__list_emit_send[CH_ESTRIGGER_TIMEOUT][0]):
+                if time.time() - self.__list_emit_send[CH_ESTRIGGER_TIMEOUT][1][i] >= timeout:
                     list_emit_send.extend(*list_send)
                     docs.append(doc)
+                    self.__list_emit_send[CH_ESTRIGGER_TIMEOUT][1][i] = time.time()
+                    self.log.warning('!WARNING: Emit send packet on timeout = {} sec: {}'.format(timeout, docs))
             if list_emit_send:
-                self.log.warning('!WARNING: Emit send packet on timeout = {} sec: {}'.format(timeout, docs))
-                self.__time_begin_emit_send = time.time()
                 return list_emit_send
         return []
 
@@ -135,22 +137,23 @@ class HandlingProtocol(object):
         if trigger == CH_ESTRIGGER_CON:  # on_connection
             self.__list_emit_send[CH_ESTRIGGER_CON][0].extend(*list_send)
             self.__list_emit_send[CH_ESTRIGGER_CON][1].append(doc)
-            self.__len_list_emit_send[CH_ESTRIGGER_CON] += len(self.__list_emit_send[CH_ESTRIGGER_CON])
         if trigger == CH_ESTRIGGER_TIMEOUT:  # on_timeout
             timeout = dict_emit.get(KW_EMIT_TIMEOUT, 1)
-            self.__list_emit_send[CH_ESTRIGGER_TIMEOUT].append((timeout, list_send, doc))
-            self.__len_list_emit_send[CH_ESTRIGGER_TIMEOUT] += len(
-                self.__list_emit_send[CH_ESTRIGGER_TIMEOUT])
+            self.__list_emit_send[CH_ESTRIGGER_TIMEOUT][0].append((timeout, list_send, doc))
+            # self.__len_list_emit_send[CH_ESTRIGGER_TIMEOUT] += len(
+            #     self.__list_emit_send[CH_ESTRIGGER_TIMEOUT][0])
         elif trigger != CH_ESTRIGGER_CON:
             raise ValueError('!Error: timeout into emit_send is not unknown: {}',
                              dict_emit.get(KW_EMIT_TIMEOUT, ''))
 
     def __init_parse(self):
         self.__lists_protocol.clear()
-        for item in self.__len_list_emit_send:
-            self.__len_list_emit_send[item] = 0
 
-        self.__list_emit_send[CH_ESTRIGGER_TIMEOUT].clear()
+        self.__list_emit_send[CH_ESTRIGGER_TIMEOUT][0].clear()
+        self.__list_emit_send[CH_ESTRIGGER_TIMEOUT][1].clear()
+        self.__len_list_emit_send[CH_ESTRIGGER_TIMEOUT] = 0
+
+        self.__len_list_emit_send[CH_ESTRIGGER_CON] = 0
         self.__list_emit_send[CH_ESTRIGGER_CON][0].clear()
         self.__list_emit_send[CH_ESTRIGGER_CON][1].clear()
 
@@ -216,8 +219,18 @@ class HandlingProtocol(object):
             if len_set != len_list:
                 raise ValueError("!! Error: Generating list is not unique: {0} vs {1}".format(len_set, len_list))
 
-        self.__len_list_porotocol = len(self.__lists_protocol)
+        self.__post_parse_init()
+
         return self.__len_list_porotocol
+
+    def __post_parse_init(self):
+        self.__len_list_porotocol = len(self.__lists_protocol)
+        self.__len_list_emit_send[CH_ESTRIGGER_CON] = len(self.__list_emit_send[CH_ESTRIGGER_CON][0])
+        self.__len_list_emit_send[CH_ESTRIGGER_TIMEOUT] = len(self.__list_emit_send[CH_ESTRIGGER_TIMEOUT][0])
+
+        tm = time.time()
+        for i in range(self.__len_list_emit_send[CH_ESTRIGGER_TIMEOUT]):
+            self.__list_emit_send[CH_ESTRIGGER_TIMEOUT][1].append(tm)
 
     @staticmethod
     def __generate_list_response(handler_dict_response, order, response, param_info):
