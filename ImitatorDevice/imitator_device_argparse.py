@@ -10,7 +10,7 @@ __author__ = 'Andrey'
 
 class ImitatorDeviceParams(object):
     def __init__(self, path_to_conf, level='DEBUG'):
-        self._parser = argparse.ArgumentParser(prog=sys.argv[0], usage='Run %(prog)s with specify values datas',
+        self._parser = argparse.ArgumentParser(prog=sys.argv[0], description='Using for debug client applications',
                                                formatter_class=argparse.ArgumentDefaultsHelpFormatter)
         self.__path_to_conf = path_to_conf
         self._choices = {'ERROR': logging.ERROR, 'INFO': logging.INFO, 'DEBUG': logging.DEBUG,

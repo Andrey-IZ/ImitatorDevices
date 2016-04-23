@@ -1,6 +1,7 @@
-__author__ = 'Andrey'
-
 from ImitatorDevice.imitator_device_argparse import ImitatorDeviceParams
+
+
+__author__ = 'Andrey'
 
 
 class ImitatorSeriaSocketlDeviceParams(ImitatorDeviceParams):

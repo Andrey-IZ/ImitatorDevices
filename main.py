@@ -6,7 +6,7 @@ import sys
 from ImitatorDevice.protocol.handling_protocol import HandlingProtocol
 from ImitatorDevice.serial.ServerSerialDeviceImitator import *
 from ImitatorDevice.socket.ServerSocketDeviceImitator import *
-from imitator_serial_device_params import ImitatorSeriaSocketlDeviceParams
+from imitator_serial_socket_device_params import ImitatorSeriaSocketlDeviceParams
 import handlers_ukcu
 
 
@@ -126,15 +126,10 @@ if __name__ == '__main__':
             except EOFError:
                 pass
             finally:
-                print('FINALLY')
-                if serial_server:
-                    print('SER FINALLY')
-                    serial_server.stop()
-                    print('SER2 FINALLY')
-                print('END1 FINALLY')
-                if socket_server:
-                    socket_server.stop()
-                print('END2 FINALLY')
+                try: serial_server.stop()
+                except: pass
+                try: socket_server.stop()
+                except: pass
                 logging.warning('Disconnected all interfaces')
                 break
     else:
