@@ -45,7 +45,7 @@ def __import_function(file_name, function_name):
             func = getattr(module, function_name)
             return func
         except ImportError:
-            raise ImportError("Error import funcion: '{1}' from file name: '{0}'".format(file_name, function_name))
+            raise ImportError("!Error import funcion: '{1}' from file name: '{0}'".format(file_name, function_name))
 
 
 def str_hex2byte(request):
