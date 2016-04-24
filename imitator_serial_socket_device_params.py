@@ -5,7 +5,7 @@ __author__ = 'Andrey'
 
 
 class ImitatorSeriaSocketlDeviceParams(ImitatorDeviceParams):
-    def __init__(self, path_to_conf, level='INFO'):
+    def __init__(self, path_to_conf='', level='INFO'):
         super(ImitatorSeriaSocketlDeviceParams, self).__init__(path_to_conf, level)
 
     def _init_args(self):

@@ -40,6 +40,8 @@ class ServerSocketDeviceimitator(ServerDeviceImitator):
         self.buffer_size = buffer_size
         self.socket = None
         self.func_process_events = None
+        self.is_emit_send_on_connect = settings_conf.is_emit_send_on_connect
+        self.is_emit_send_on_timeout = settings_conf.is_emit_send_on_timeout
         self.handler_response = settings_conf.handler_response
         self.socket_settings = settings_conf.socket_settings
         self.handler_emit_send = settings_conf.handler_emit_send
@@ -155,20 +157,21 @@ class ServerSocketDeviceimitator(ServerDeviceImitator):
                     else:  # данные есть
                         self.log.error('Connecting client from: {}'.format(addr))
                         client.setblocking(0)  # снимаем блокировку и тут тоже
-
-                        for packet in self.handler_emit_send(is_connect=True):
-                            if packet:
-                                client.send(packet)
-                                self.log.warning("<- send: {}".format(byte2hex_str(packet)))
+                        if self.is_emit_send_on_connect:
+                            for packet in self.handler_emit_send(is_connect=True):
+                                if packet:
+                                    client.send(packet)
+                                    self.log.warning("<- send: {}".format(byte2hex_str(packet)))
 
                         # если в блоке except вы выходите,
                         # ставить else и отступ не нужно
                         while self.alive:
                             try:
-                                for packet in self.handler_emit_send(is_timeout=True):
-                                    if packet:
-                                        client.send(packet)
-                                        self.log.warning("<- send: {} <timeout>".format(byte2hex_str(packet)))
+                                if self.is_emit_send_on_timeout:
+                                    for packet in self.handler_emit_send(is_timeout=True):
+                                        if packet:
+                                            client.send(packet)
+                                            self.log.warning("<- send: {} <timeout>".format(byte2hex_str(packet)))
 
                                 data_recv = client.recv(self.buffer_size)
                             except socket.error as err:  # данных нет
@@ -190,14 +193,7 @@ class ServerSocketDeviceimitator(ServerDeviceImitator):
                                 if not data_recv:
                                     break
                                 else:
-                                    self.log.warning("======================================")
-                                    self.log.warning("-> recv: {}".format((byte2hex_str(data_recv))))
-                                    list_packets = self.handler_response(data_recv)
-                                    if list_packets:
-                                        for packet in list_packets:
-                                            if packet:
-                                                self.log.warning("<- send: {}".format(byte2hex_str(packet)))
-                                                client.send(packet)
+                                    self.__process_packet(client, data_recv)
                 except socket.error as err:
                     if err.args[0] == errno.WSAECONNABORTED:
                         self.log.error('Connection closed from {}'.format(addr))
@@ -219,3 +215,13 @@ class ServerSocketDeviceimitator(ServerDeviceImitator):
             raise SocketDeviceException(exc_str) from err
         finally:
             self.socket.close()
+
+    def __process_packet(self, client, data_recv):
+        self.log.warning("======================================")
+        self.log.warning("-> recv: {}".format((byte2hex_str(data_recv))))
+        list_packets = self.handler_response(data_recv)
+        if list_packets:
+            for packet in list_packets:
+                if packet:
+                    self.log.warning("<- send: {}".format(byte2hex_str(packet)))
+                    client.send(packet)

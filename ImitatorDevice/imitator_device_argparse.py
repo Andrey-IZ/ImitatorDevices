@@ -26,8 +26,11 @@ class ImitatorDeviceParams(object):
             return None
 
     def _init_args(self):
-        self._parser.add_argument('-p', '--conf-path', dest='conf_path', help='Set path to configuration file',
-                                  default=self.__path_to_conf)
+        if self.__path_to_conf:
+            self._parser.add_argument('-p', '--conf-path', dest='conf_path', help='Set path to configuration file',
+                                      default=self.__path_to_conf)
+        else:
+            self._parser.add_argument('-p', '--conf-path', required=True, dest='conf_path', help='Set path to configuration file')
         self._parser.add_argument('-l', '--level', dest='level', choices=sorted(self._choices.keys()),
                                   help='Set level output messages', default=self.__level)
 

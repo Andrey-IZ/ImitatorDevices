@@ -3,6 +3,7 @@
 
 import logging
 import sys
+import os.path
 from ImitatorDevice.protocol.handling_protocol import HandlingProtocol
 from ImitatorDevice.serial.ServerSerialDeviceImitator import *
 from ImitatorDevice.socket.ServerSocketDeviceImitator import *
@@ -53,13 +54,17 @@ def socket_server_start(settings_conf):
 
 if __name__ == '__main__':
 
-    params = ImitatorSeriaSocketlDeviceParams(path_to_conf='protocol_serial_device.conf')
+    params = ImitatorSeriaSocketlDeviceParams(path_to_conf='protocol_tcp_pchv3.conf')
     params.parse_args()
 
-    file_conf = params.path_to_conf
     logging.basicConfig(format=u'%(asctime)-15s [%(threadName)s] %(message)s',
                         level=params.level)
     logging.info("Level output messages set to " + params.level_str)
+
+    file_conf = params.path_to_conf
+    if not os.path.exists(file_conf):
+        logging.error('!Error: configuration file "{}" not found'.format(file_conf))
+        sys.exit(1)
 
     cmd = ''
     settings_conf = HandlingProtocol()
@@ -132,7 +137,6 @@ if __name__ == '__main__':
                 try: socket_server.stop()
                 except: pass
                 logging.warning(' -- Disconnected all interfaces --')
-                # break
     else:
-        logging.error("!Error: Not defined start interface !")
+        logging.error("!Error: Not defined start interface! Using option: '-c' or/and '-s' ")
     logging.info('--- exit ---')
