@@ -21,9 +21,9 @@ def serial_server_start(settings_conf):
         logging.info("Serving serial port: {}".format(settings_conf.serialport_settings))
         is_serial_server_start = serial_server.listen()
     except SerialOpenPortException as e:
-        pass
-    except Exception:
-        pass
+        logging.error("Error for opening serial port {0}: {1}".format(serial_server.port_settings, e.args))
+    except Exception as e:
+        logging.error("Error by starting serial server listen: {0}".format(e.args))
     finally:
         if serial_server and not is_serial_server_start:
             serial_server.stop()

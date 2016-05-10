@@ -49,8 +49,13 @@ class ServerSerialDeviceimitator(ServerDeviceImitator):
         return True
 
     def listen(self, thread_name='serial-reader'):
-        if self.serial.is_open:
-            super().listen(thread_name=self.serial.port)
+        if hasattr(self.serial, 'is_open'):
+            if self.serial.is_open:
+                super().listen(thread_name=self.serial.port)
+                return True
+        elif hasattr(self.serial, 'isOpen'):
+            if self.serial.isOpen:
+                super().listen(thread_name=self.serial.port)
             return True
         return False
 
