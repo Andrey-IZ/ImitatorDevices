@@ -54,7 +54,7 @@ def socket_server_start(settings_conf):
 
 if __name__ == '__main__':
 
-    params = ImitatorSeriaSocketlDeviceParams(path_to_conf='protocol_tcp_pchv3.conf')
+    params = ImitatorSeriaSocketlDeviceParams()
     params.parse_args()
 
     logging.basicConfig(format=u'%(asctime)-15s [%(threadName)s] %(message)s',
