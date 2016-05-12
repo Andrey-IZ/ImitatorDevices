@@ -32,21 +32,60 @@ def load_handler(module_name, function_name):
         return [__import_function(module_name, function_name)]
 
 
+# def __import_function(file_name, function_name):
+#     if isinstance(file_name, str) and isinstance(function_name, str):
+#         path_file = os.path.abspath(file_name) if file_name.endswith('.py') else os.path.abspath(file_name) + '.py'
+#         module_name = os.path.basename(path_file)[:-3] if file_name.endswith('.py') else os.path.basename(path_file)
+#         path_dir = os.path.dirname(path_file).split('\\')[-1]
+#         if path_dir not in sys.path:
+#             sys.path.append(path_dir)
+#         try:
+#             import runpy
+#             d = runpy.run_path(path_file)
+#             globals().update(d)
+#             possibles = globals().copy()
+#             possibles.update(locals())
+#             func = possibles.get(function_name)
+#             func2 = possibles.get('__create_packet')
+#             if not func:
+#                  raise NotImplementedError("Method %s not implemented" % function_name)
+#             return func
+#         except ImportError:
+#             raise ImportError("!Error import funcion: '{1}' from file name: '{0}'".format(file_name, function_name))
+# #
 def __import_function(file_name, function_name):
     if isinstance(file_name, str) and isinstance(function_name, str):
-        path_file = os.path.abspath(file_name)
+        path_file = os.path.abspath(file_name) if file_name.endswith('.py') else os.path.abspath(file_name) + '.py'
         module_name = os.path.basename(path_file)[:-3] if file_name.endswith('.py') else os.path.basename(path_file)
         path_dir = os.path.dirname(path_file).split('\\')[-1]
         if path_dir not in sys.path:
             sys.path.append(path_dir)
         try:
-            module = importlib.import_module(module_name)
-            # module = __import__(module_name)
-            func = getattr(module, function_name)
+            exec(compile(open(path_file, "rb").read(), path_file, 'exec'))
+            globals().update(locals())
+            func = globals().get(function_name)
+            if not func:
+                raise ImportError()
             return func
         except ImportError:
             raise ImportError("!Error import funcion: '{1}' from file name: '{0}'".format(file_name, function_name))
 
+
+# def __import_function(file_name, function_name):
+#     if isinstance(file_name, str) and isinstance(function_name, str):
+#         path_file = os.path.abspath(file_name)
+#         module_name = os.path.basename(path_file)[:-3] if file_name.endswith('.py') else os.path.basename(path_file)
+#         path_dir = os.path.dirname(path_file).split('\\')[-1]
+#         if path_dir not in sys.path:
+#             sys.path.append(path_dir)
+#         try:
+#             module = importlib.import_module(module_name)
+#             # module = __import__(module_name)
+#             func = getattr(module, function_name)
+#             return func
+#         except ImportError:
+#             raise ImportError("!Error import funcion: '{1}' from file name: '{0}'".format(file_name, function_name))
+#
 
 def str_hex2byte(request):
     if not isinstance(request, str):
@@ -56,7 +95,8 @@ def str_hex2byte(request):
     try:
         bytes_req = bytes.fromhex(str_packet_pure)
     except ValueError as e:
-        raise ValueError("Error convert string to bytes: before={}; after={}; {}".format(request, str_packet_pure, e.args))
+        raise ValueError(
+            "Error convert string to bytes: before={}; after={}; {}".format(request, str_packet_pure, e.args))
 
     return bytes_req
 

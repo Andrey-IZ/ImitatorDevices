@@ -8,8 +8,6 @@ from ImitatorDevice.protocol.handling_protocol import HandlingProtocol
 from ImitatorDevice.serial.ServerSerialDeviceImitator import *
 from ImitatorDevice.socket.ServerSocketDeviceImitator import *
 from imitator_serial_socket_device_params import ImitatorSeriaSocketlDeviceParams
-import handlers_ukcu
-import handlers_pchv3
 
 
 def serial_server_start(settings_conf):
