@@ -10,33 +10,33 @@ from ImitatorDevice.socket.ServerSocketDeviceImitator import *
 from imitator_serial_socket_device_params import ImitatorSeriaSocketlDeviceParams
 
 
-def serial_server_start(settings_conf):
+def serial_server_start(settings_conf, logger):
     is_serial_server_start = False
     serial_server = None
     try:
-        serial_server = ServerSerialDeviceimitator(settings_conf)
+        serial_server = ServerSerialDeviceimitator(settings_conf, logger)
         serial_server.open_port()
-        logging.info("Serving serial port: {}".format(settings_conf.serialport_settings))
+        logger.info("Serving serial port: {}".format(settings_conf.serialport_settings))
         is_serial_server_start = serial_server.listen()
     except SerialOpenPortException as e:
-        logging.error("Error for opening serial port {0}: {1}".format(serial_server.port_settings, e.args))
+        logger.error("Error for opening serial port {0}: {1}".format(serial_server.port_settings, e.args))
     except Exception as e:
-        logging.error("Error by starting serial server listen: {0}".format(e.args))
+        logger.error("Error by starting serial server listen: {0}".format(e.args))
     finally:
         if serial_server and not is_serial_server_start:
             serial_server.stop()
             serial_server = None
-            logging.info('Disconnected serial interface: {}'.format(serial_server))
+            logger.info('Disconnected serial interface: {}'.format(serial_server))
     return serial_server
 
 
-def socket_server_start(settings_conf):
+def socket_server_start(settings_conf, logger):
     is_socket_server_start = False
     socket_server = None
     try:
-        socket_server = ServerSocketDeviceimitator(settings_conf)
+        socket_server = ServerSocketDeviceimitator(settings_conf, logger)
         socket_server.open_port()
-        logging.info("Serving socket port: {}".format(settings_conf.socket_settings))
+        logger.info("Serving socket port: {}".format(settings_conf.socket_settings))
         is_socket_server_start = socket_server.listen()
     except SocketBindPortException:
         pass
@@ -46,8 +46,24 @@ def socket_server_start(settings_conf):
         if socket_server and not is_socket_server_start:
             socket_server.stop()
             socket_server = None
-            logging.info('Disconnected socket interface: {}'.format(socket_server))
+            logger.info('Disconnected socket interface: {}'.format(socket_server))
     return socket_server
+
+
+def init_logging():
+    logger = logging.getLogger('ImitatorSomeDevice')
+    logFormatter = logging.Formatter(u'%(asctime)-15s <%(levelname)-1.1s> [%(threadName)s] %(message)s')
+    logger.setLevel(params.level)
+
+    if params.logfile_path:
+        fileHandler = logging.FileHandler(params.logfile_path, encoding='utf-8')
+        fileHandler.setFormatter(logFormatter)
+        logger.addHandler(fileHandler)
+
+    consoleHandler = logging.StreamHandler(sys.stdout)
+    consoleHandler.setFormatter(logFormatter)
+    logger.addHandler(consoleHandler)
+    return logger
 
 
 if __name__ == '__main__':
@@ -55,31 +71,32 @@ if __name__ == '__main__':
     params = ImitatorSeriaSocketlDeviceParams()
     params.parse_args()
 
-    logging.basicConfig(format=u'%(asctime)-15s [%(threadName)s] %(message)s',
-                        level=params.level)
-    logging.info("Level output messages set to " + params.level_str)
+    logger = init_logging()
+
+    logger.info("--- Start application ---")
+    logger.info("Level output messages set to " + params.level_str)
 
     file_conf = params.path_to_conf
     if not os.path.exists(file_conf):
-        logging.error('!Error: configuration file "{}" not found'.format(file_conf))
+        logger.error('!Error: configuration file "{}" not found'.format(file_conf))
         sys.exit(1)
 
     cmd = ''
-    settings_conf = HandlingProtocol()
+    settings_conf = HandlingProtocol(logger)
 
     if params.run_serial or params.run_socket:
         while True:
-            logging.warning("Imitator serial devices started")
+            logger.warning("Imitator serial devices started")
             print(
                 u">>> Enter 'exit' or Ctrl+C enter for quit. "
                 u"Enter 'start' to start server. \n>>> Enter 'restart' for restart servers. ")
             print(u">>> Enter 'reconf' for reload configuration file without restart of servers")
 
-            logging.info("Parsing configuration file: {}".format(file_conf))
+            logger.info("Parsing configuration file: {}".format(file_conf))
             try:
                 settings_conf.parse(file_conf)
             except Exception as err:
-                logging.error('>>> {}'.format(err))
+                logger.error('>>> {}'.format(err))
                 raise Exception(err) from err
 
             serial_server = None
@@ -87,9 +104,9 @@ if __name__ == '__main__':
             try:
                 try:
                     if params.run_serial:
-                        serial_server = serial_server_start(settings_conf)
+                        serial_server = serial_server_start(settings_conf, logger)
                     if params.run_socket:
-                        socket_server = socket_server_start(settings_conf)
+                        socket_server = socket_server_start(settings_conf, logger)
 
                     if not serial_server and not socket_server:
                         print(u">>> Imitator device was stop")
@@ -98,15 +115,15 @@ if __name__ == '__main__':
                         cmd = input()
                         if cmd == 'stop' or cmd == 'exit' or cmd == 'restart':
                             str_info = '>>> Imitator device is ' + cmd + 'ed'
-                            logging.warning(str_info)
+                            logger.warning(str_info)
                             print(str_info)
                             break
                         elif cmd == 'reconf':
                             settings_conf.parse(params.path_to_conf)
-                            logging.warning('File configuration: {} was reload'.format(params.path_to_conf))
+                            logger.warning('File configuration: {} was reload'.format(params.path_to_conf))
 
                 except SerialDeviceException as err:
-                    logging.error("!Error: occurrence with serial port server: {}".format(err))
+                    logger.error("!Error: occurrence with serial port server: {}".format(err))
                     sys.stdout.write('\n')
                     raise KeyboardInterrupt()
 
@@ -115,11 +132,11 @@ if __name__ == '__main__':
 
                 while True:
                     if cmd == 'restart':
-                        logging.warning('***************************************')
+                        logger.warning('***************************************')
                         break
                     cmd = input(">>> Enter 'start' to start server: ")
                     if cmd == 'start':
-                        logging.warning('***************************************')
+                        logger.warning('***************************************')
                         break
                     if cmd == 'exit':
                         raise KeyboardInterrupt()
@@ -134,7 +151,7 @@ if __name__ == '__main__':
                 except: pass
                 try: socket_server.stop()
                 except: pass
-                logging.warning(' -- Disconnected all interfaces --')
+                logger.warning(' -- Disconnected all interfaces --')
     else:
-        logging.error("!Error: Not defined start interface! Using option: '-c' or/and '-s' ")
-    logging.info('--- exit ---')
+        logger.error("!Error: Not defined start interface! Using option: '-c' or/and '-s' ")
+    logger.info('--- exit ---')

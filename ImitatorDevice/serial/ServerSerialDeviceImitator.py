@@ -18,8 +18,8 @@ class ServerSerialDeviceimitator(ServerDeviceImitator):
     """
     """
 
-    def __init__(self, settings_conf):
-        super().__init__('Serial Server')
+    def __init__(self, settings_conf, logger):
+        super().__init__(logger)
         self.serial = None
         self.handler_response = settings_conf.handler_response
         self.port_settings = settings_conf.serialport_settings

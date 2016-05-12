@@ -35,8 +35,8 @@ class ServerSocketDeviceimitator(ServerDeviceImitator):
     """
     """
 
-    def __init__(self, settings_conf, buffer_size=1024):
-        super().__init__('Socket Server')
+    def __init__(self, settings_conf, logger, buffer_size=1024):
+        super().__init__(logger)
         self.buffer_size = buffer_size
         self.socket = None
         self.func_process_events = None

@@ -20,10 +20,10 @@ class HandlingProtocol(object):
     It implements  parsing and algorithmic handling loaded protocol configuration
     """
 
-    def __init__(self):
+    def __init__(self, logger):
         self.__serial_port_settings = []
         self.__socket_settings = []
-        self.log = logging.getLogger('HandlingProtocol')
+        self.log = logger
         self.__lists_protocol = []
         self.__count_req_generator_packet = 0
         self.__count_req_zip_packet = 0

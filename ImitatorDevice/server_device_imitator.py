@@ -6,8 +6,8 @@ import threading
 
 
 class ServerDeviceImitator(object):
-    def __init__(self, logger_name):
-        self.log = logging.getLogger(logger_name)
+    def __init__(self, logger):
+        self.log = logger
         self.thread_read = None
         self.alive = False
         self.thread_name = 'reader'
