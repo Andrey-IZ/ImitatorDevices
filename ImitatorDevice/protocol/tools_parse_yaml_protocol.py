@@ -9,7 +9,7 @@ import importlib
 
 def load_conf_test(filename):
     res = []
-    with open(filename, 'rt') as fd:
+    with open(filename, 'rt', encoding='utf-8') as fd:
         yml = yaml.safe_load_all(fd)
         for doc in yml:
             res.append(doc)
