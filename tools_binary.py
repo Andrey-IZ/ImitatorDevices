@@ -1,5 +1,26 @@
 import binascii
 import struct
+import bitstring
+from bitstring import BitArray
+
+
+def bit_array2endian_bytes(packet_word_list):
+    data = bytearray()
+    for word in packet_word_list:
+        # if sys.byteorder != 'big':
+        #     word.byteswap()
+        data.extend(word.tobytes())
+    return bytes(data)
+
+
+def unpack_bits(byte_array, fmt, **kwargs):
+    ba = BitArray(bytes=byte_array)
+    result = ba.unpack(fmt, **kwargs)
+    return result
+
+
+def pack_bits(fmt, *values, **kwargs):
+    return bitstring.pack(fmt, *values, **kwargs)
 
 
 def byte2hex_str(byte_array):

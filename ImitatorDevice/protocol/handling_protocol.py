@@ -29,12 +29,15 @@ class HandlingProtocol(object):
         self.__count_req_zip_packet = 0
         self.__count_req_semiduplex_packet = 0
         self.__count_protocol = 0
-        self.__len_list_porotocol = 0
+        self.__len_list_protocol = 0
         self.__is_processing_resp = False
 
         self.__list_emit_send = {CH_ESTRIGGER_CON: [[], []], CH_ESTRIGGER_TIMEOUT: [[], []]}
         self.__len_list_emit_send = {CH_ESTRIGGER_CON: 0, CH_ESTRIGGER_TIMEOUT: 0}
         self.__time_begin_emit_send = time.time()
+
+        self.__handler_dict_parser = None
+        self.__list_gen_full = []
 
     @property
     def is_emit_send_on_connect(self):
@@ -155,19 +158,43 @@ class HandlingProtocol(object):
         self.__list_emit_send[CH_ESTRIGGER_CON][0].clear()
         self.__list_emit_send[CH_ESTRIGGER_CON][1].clear()
 
+    def __process_full_generate_response(self, bytes_recv):
+        if not self.__handler_dict_parser:
+            return None
+        func_parser = load_handler(**self.__handler_dict_parser)
+        for handler_dict_response, request, response, doc, order in self.__list_gen_full:
+            if isinstance(handler_dict_response, dict):
+                func_handler_response = load_handler(**handler_dict_response)
+                func_result = func_handler_response[0](self.log, func_parser[0](bytes_recv), request, response)
+                if func_result:
+                    self.log.warning(u'!WARNING Handled command: "{0}", function = \"{2}\", order = {1}'.format(
+                        doc, order, func_handler_response[0].__name__))
+
+                    return func_result
+        return None
+
     def parse(self, file_name):
         """
         It makes parsing file_name and generates lists of protocol
         :param file_name:
         :return:
         """
+        offset = 1
         conf = load_conf_test(file_name)
         self.__parse_settings(conf[0])
-
         self.__init_parse()
 
-        for i, cmd in enumerate(conf[1:]):
+        cmd = str_dict_keys_lower(conf[1])
+        if isinstance(cmd, dict):
+            parser = cmd.get('handler_parser')
+            if parser:
+                offset = 2
+                self.__handler_dict_parser = parser
+
+        for i, cmd in enumerate(conf[offset:]):
             cmd = str_dict_keys_lower(cmd)
+            if not cmd:
+                continue
             doc = cmd.get(KW_DOC)
             if not isinstance(doc, str) and not doc:
                 raise ValueError(
@@ -187,6 +214,11 @@ class HandlingProtocol(object):
                 continue
 
             request = cmd.get(KW_REQUEST)
+
+            if order == 'full-generator':
+                self.__list_gen_full.append((handler_response, request, response, doc, order))
+                continue
+
             handler_request = cmd.get(KW_HANDLER_REQUEST)
 
             list_req = self.__genearate_list_packet(handler_request, request, (doc, order))
@@ -200,7 +232,7 @@ class HandlingProtocol(object):
                                                                                order))
             self.__lists_protocol.append((order, list_req, gen_list_resp, doc))
 
-        if isinstance(self.__lists_protocol[0], tuple) and len(self.__lists_protocol) > 0:
+        if self.__lists_protocol and isinstance(self.__lists_protocol[0], tuple) and len(self.__lists_protocol) > 0:
             list_unique = []
             for row in self.__lists_protocol:
                 if isinstance(row, bytes):
@@ -219,10 +251,10 @@ class HandlingProtocol(object):
 
         self.__post_parse_init()
 
-        return self.__len_list_porotocol
+        return self.__len_list_protocol
 
     def __post_parse_init(self):
-        self.__len_list_porotocol = len(self.__lists_protocol)
+        self.__len_list_protocol = len(self.__lists_protocol)
         self.__len_list_emit_send[CH_ESTRIGGER_CON] = len(self.__list_emit_send[CH_ESTRIGGER_CON][0])
         self.__len_list_emit_send[CH_ESTRIGGER_TIMEOUT] = len(self.__list_emit_send[CH_ESTRIGGER_TIMEOUT][0])
 
@@ -389,9 +421,15 @@ class HandlingProtocol(object):
         :return: list of bytes for writing to serial port or None to send nothing
         :rtype: bytes
         """
+        if len(self.__list_gen_full) > 0:
+            result = self.__process_full_generate_response(bytes_recv)
+            if result is not None:
+                return result
+
         if not self.__lists_protocol:
             raise ValueError("List protocol did not loaded. It is empty")
-        while self.__count_protocol < self.__len_list_porotocol:
+
+        while self.__count_protocol < self.__len_list_protocol:
             cmd = self.__lists_protocol[self.__count_protocol]
             order = cmd[0]
             list_req = cmd[1]
@@ -417,13 +455,13 @@ class HandlingProtocol(object):
                 if result is not None:
                     return result
 
-            if self.__count_protocol == self.__len_list_porotocol - 1:
+            if self.__count_protocol == self.__len_list_protocol - 1:
                 if self.__count_req_semiduplex_packet == 0 and \
                                 self.__count_req_generator_packet == 0 and self.__count_req_zip_packet == 0:
                     self.log.error(
                         "!_WARNING_!: Not found command of packet: {}, "
                         "amount sought protocol command's = {} of {}".format(
-                            str_hex2byte(bytes_recv), self.__count_protocol + 1, self.__len_list_porotocol))
+                            str_hex2byte(bytes_recv), self.__count_protocol + 1, self.__len_list_protocol))
                 self.__count_protocol = 0
                 return None
             else:
