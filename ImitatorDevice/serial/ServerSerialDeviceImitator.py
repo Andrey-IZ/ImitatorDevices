@@ -27,6 +27,8 @@ class ServerSerialDeviceimitator(ServerDeviceImitator):
 
     def __init_serial(self):
         self.serial = serial.Serial()
+        if self.port_settings.port == '':
+            return
         try:
             self.serial.port = self.port_settings.port  # , do_not_open=True)
             self.serial.timeout = 0  # required so that the reader thread can exit

@@ -5,7 +5,7 @@ import serial
 
 
 class SerialPortSettings(object):
-    def __init__(self, port_name='COM0', baud_rate='', databits='', parity='',
+    def __init__(self, port_name='', baud_rate='', databits='', parity='',
                  stop_bits='', timeout=0, delay_response=0):
         self.log = logging.getLogger('SerialPortSettings')
         self.__serial_settings = dict(port_name=port_name, baud_rate=baud_rate,
