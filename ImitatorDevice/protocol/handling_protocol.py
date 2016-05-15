@@ -459,7 +459,7 @@ class HandlingProtocol(object):
                 if self.__count_req_semiduplex_packet == 0 and \
                                 self.__count_req_generator_packet == 0 and self.__count_req_zip_packet == 0:
                     self.log.error(
-                        "!_WARNING_!: Not found command of packet: {}, "
+                        "!! Not found command of packet: {}, "
                         "amount sought protocol command's = {} of {}".format(
                             str_hex2byte(bytes_recv), self.__count_protocol + 1, self.__len_list_protocol))
                 self.__count_protocol = 0

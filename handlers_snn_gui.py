@@ -56,7 +56,7 @@ def handler_response_snn_gui_req_turn_omega(log, parsing_data, request_data, res
         sign_omega = 1 if packet_techno_word1[7] else -1
         omega = int(omega_high | omega_low)
         omega *= sign_omega
-        log.info('++ Команда: \"Вращение ω={}\"'.format(omega))
+        log.info('++ Команда: \"Вращение Omega={}\"'.format(omega))
 
         packet_word1 = BitArray(length=16)
         packet_word2 = BitArray(length=16)
@@ -80,7 +80,7 @@ def handler_response_snn_gui_aim_on(log, parsing_data, request_data, response_da
         betta_hex = int(betta_high | betta_low)
         k_angle = 360.0 / 4095
         betta_degree = round(betta_hex * k_angle, 2)
-        log.info('++ Команда ({2}): \"Наведение, β={0} (0x{1:X})\"'.format(betta_degree, betta_hex, bin(code[0])))
+        log.info('++ Команда ({2}): \"Наведение, Betta={0} (0x{1:X})\"'.format(betta_degree, betta_hex, bin(code[0])))
 
         packet_word1 = BitArray(length=16)
         packet_word2 = BitArray(length=16)
