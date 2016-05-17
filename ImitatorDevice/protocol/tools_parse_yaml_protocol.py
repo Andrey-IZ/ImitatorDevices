@@ -16,9 +16,10 @@ def load_conf_test(filename):
     return res
 
 
-def load_handler(module_name, function_name):
+def load_handler(config_vars, module_name, function_name):
     """
     Loads function-handler from file, which specify to configuration's file
+    :param global_vars:
     :param module_name:
     :param function_name:
     :return: function object of handler
@@ -26,10 +27,10 @@ def load_handler(module_name, function_name):
     if isinstance(function_name, list):
         list_func = list()
         for function in function_name:
-            list_func.append(__import_function(module_name, function))
+            list_func.append(__import_function(module_name, function, config_vars))
         return list_func
     else:
-        return [__import_function(module_name, function_name)]
+        return [__import_function(module_name, function_name, config_vars)]
 
 
 # def __import_function(file_name, function_name):
@@ -53,7 +54,7 @@ def load_handler(module_name, function_name):
 #         except ImportError:
 #             raise ImportError("!Error import funcion: '{1}' from file name: '{0}'".format(file_name, function_name))
 # #
-def __import_function(file_name, function_name):
+def __import_function(file_name, function_name, config_vars):
     if isinstance(file_name, str) and isinstance(function_name, str):
         path_file = os.path.abspath(file_name) if file_name.endswith('.py') else os.path.abspath(file_name) + '.py'
         module_name = os.path.basename(path_file)[:-3] if file_name.endswith('.py') else os.path.basename(path_file)
@@ -61,6 +62,8 @@ def __import_function(file_name, function_name):
         if path_dir not in sys.path:
             sys.path.append(path_dir)
         try:
+            module_vars = globals().copy()
+            module_vars.update(config_vars)
             exec(compile(open(path_file, "rb").read(), path_file, 'exec'))
             globals().update(locals())
             func = globals().get(function_name)

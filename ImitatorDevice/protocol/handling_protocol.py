@@ -24,6 +24,8 @@ class HandlingProtocol(object):
         self.__serial_port_settings = []
         self.__socket_settings = []
         self.log = logger
+        self.config_vars = {}
+
         self.__lists_protocol = []
         self.__count_req_generator_packet = 0
         self.__count_req_zip_packet = 0
@@ -120,7 +122,7 @@ class HandlingProtocol(object):
             trigger = dict_emit.get(KW_EMIT_TRIGGER, '')
             if trigger:
                 try:
-                    list_send = HandlingProtocol.__genearate_list_packet(handler_dict_response, response, param_info)
+                    list_send = self.__genearate_list_packet(handler_dict_response, response, param_info)
                 except Exception as err:
                     raise ValueError(err) from err
                 if list_send:
@@ -161,10 +163,10 @@ class HandlingProtocol(object):
     def __process_full_generate_response(self, bytes_recv):
         if not self.__handler_dict_parser:
             return None
-        func_parser = load_handler(**self.__handler_dict_parser)
+        func_parser = load_handler(self.config_vars, **self.__handler_dict_parser)
         for handler_dict_response, request, response, doc, order in self.__list_gen_full:
             if isinstance(handler_dict_response, dict):
-                func_handler_response = load_handler(**handler_dict_response)
+                func_handler_response = load_handler(self.config_vars, **handler_dict_response)
                 func_result = func_handler_response[0](self.log, func_parser[0](bytes_recv), request, response)
                 if func_result:
                     self.log.warning(u'!WARNING Handled command: "{0}", function = \"{2}\", order = {1}'.format(
@@ -179,19 +181,20 @@ class HandlingProtocol(object):
         :param file_name:
         :return:
         """
-        offset = 1
         conf = load_conf_test(file_name)
-        self.__parse_settings(conf[0])
+        settings_conf = conf[0]
+        self.__parse_settings(settings_conf)
         self.__init_parse()
 
-        cmd = str_dict_keys_lower(conf[1])
+        cmd = str_dict_keys_lower(settings_conf)
+
+        self.config_vars = cmd.get('config_vars', {})
         if isinstance(cmd, dict):
             parser = cmd.get('handler_parser')
             if parser:
-                offset = 2
                 self.__handler_dict_parser = parser
 
-        for i, cmd in enumerate(conf[offset:]):
+        for i, cmd in enumerate(conf[1:]):
             cmd = str_dict_keys_lower(cmd)
             if not cmd:
                 continue
@@ -262,8 +265,7 @@ class HandlingProtocol(object):
         for i in range(self.__len_list_emit_send[CH_ESTRIGGER_TIMEOUT]):
             self.__list_emit_send[CH_ESTRIGGER_TIMEOUT][1].append(tm)
 
-    @staticmethod
-    def __generate_list_response(handler_dict_response, order, response, param_info):
+    def __generate_list_response(self, handler_dict_response, order, response, param_info):
         list_resp = []
         if isinstance(handler_dict_response, dict):
             func_handler_response = load_handler(**handler_dict_response)
@@ -273,7 +275,7 @@ class HandlingProtocol(object):
                 else:
                     return [func_handler_response], response
             elif order == CH_ORDER_ZIP or order == CH_ORDER_SEMIDUPLEX:
-                return HandlingProtocol.__genearate_list_packet(handler_dict_response, response, param_info)
+                return self.__genearate_list_packet(handler_dict_response, response, param_info)
         elif isinstance(response, list):
             for resp in response:
                 list_resp.append(str_hex2byte(resp))
@@ -281,12 +283,11 @@ class HandlingProtocol(object):
             list_resp.append(str_hex2byte(response))
         return list_resp
 
-    @staticmethod
-    def __genearate_list_packet(handler_func_dict, data_packet, param_info):
+    def __genearate_list_packet(self, handler_func_dict, data_packet, param_info):
         list_packet = []
         doc, order = param_info
         if isinstance(handler_func_dict, dict):
-            func_handler = load_handler(**handler_func_dict)
+            func_handler = load_handler(self.config_vars, **handler_func_dict)
             try:
                 for func in func_handler:
                     if data_packet is None:
@@ -427,7 +428,8 @@ class HandlingProtocol(object):
                 return result
 
         if not self.__lists_protocol:
-            raise ValueError("List protocol did not loaded. It is empty")
+            self.log.error("Error: List protocol did not loaded. It is empty")
+            return None
 
         while self.__count_protocol < self.__len_list_protocol:
             cmd = self.__lists_protocol[self.__count_protocol]
