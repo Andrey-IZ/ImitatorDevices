@@ -17,7 +17,7 @@ def big_endian_reverse(data_bytes):
 
 
 def handler_parser_snn_gui(bytes_recv):
-    bytes_recv = big_endian_reverse(bytes_recv)
+    # bytes_recv = big_endian_reverse(bytes_recv)
     packet_word = BitArray(bytes=bytes_recv[0:2])
     code = packet_word[8:16].unpack('uint:5, uint:1, uint:2')
     return code, bytes_recv
@@ -38,7 +38,7 @@ def handler_response_snn_gui_req_ak(log, parsing_data, request_data, response_da
         packet_word2 = BitArray(length=16)
         packet_word1[8:16] = pack_bits('uint:5, uint:1, uint:2', code[0], code[1], code[2]).uint
         data = bit_array2endian_bytes([packet_word1, packet_word2])
-        data = big_endian_reverse(data)
+        # data = big_endian_reverse(data)
         send_data.append(data)
 
     return send_data
