@@ -59,53 +59,67 @@ def handler_pchv3_unversal(response_data) -> [bytes]:
     raise TypeError("Invalid parameters, that divergence signature (not dict): {}".format(response_data))
 
 
-names_power_sources = {0: '5,7В1', 1: '5,7В2', 2: '6В', 3: '7,5В'}
+
 
 
 def handler_pchv3_power_changer(log, parsing_data, request_data, response_data) -> [bytes]:
     len_packet, code, bytes_recv = parsing_data
     pchv3_power_source = globals().get('config_vars').get('pchv3_power_source')
-    global names_power_sources
-    send_data = []
-    if code == request_data:
+    names_power_sources = globals().get('config_vars').get('names_power_sources')
+    code_ps_all, code_ps = response_data, request_data
+    if code == code_ps:
         id_power, turn_on = struct.unpack('!2B', bytes_recv[4:6])
         log.info(
             '+++ Команда: \"{}\" id = \"{}\", turn_on = {}'.format('Питание ИП', names_power_sources.get(id_power),
                                                                    bool(turn_on)))
-
-        code = {'value': code, 'type': 'quint16'}
-        data = [{'value': id_power, 'type': 'quint8'}, {'value': turn_on, 'type': 'quint8'}]
-
-        send_data.append(__create_packet_qt(code, data))
-
         pchv3_power_source[id_power] = bool(turn_on)
-
-        data = {'value': all(pchv3_power_source.values()), 'type': 'quint8'}
-        code = {'value': 6, 'type': 'quint16'}
-        send_data.append(__create_packet_qt(code, data))
-    return send_data
+        return get_power_state_packet(log, code_ps_all, code_ps)
+    return []
 
 
 def handler_pchv3_all_power_changer(log, parsing_data, request_data, response_data) -> [bytes]:
     len_packet, code, bytes_recv = parsing_data
-    code_ps = response_data
-    global names_power_sources
     pchv3_power_source = globals().get('config_vars').get('pchv3_power_source')
-    send_data = []
-    if code == request_data:
+    code_ps_all, code_ps = request_data, response_data
+    if code_ps_all == code:
         turn_on = struct.unpack('!B', bytes_recv[4:5])[0]
-        log.info('+++ Команда: \"{}\" turn_on = {}'.format('Питание на всех ИП',
-                                                           bool(turn_on)))
-        for id_power in names_power_sources:
-            code_id = {'value': code_ps, 'type': 'quint16'}
-            data = [{'value': id_power, 'type': 'quint8'},
-                    {'value': turn_on, 'type': 'quint8'}]
-            pchv3_power_source[id_power] = bool(turn_on)
-            send_data.append(__create_packet_qt(code_id, data))
+        turn_on = bool(turn_on)
+        log.info('+++ Команда: \"{}\" turn_on = {}'.format('Питание на всех ИП', turn_on))
+        for id_power in pchv3_power_source:
+            pchv3_power_source[id_power] = turn_on
 
-        code = {'value': code, 'type': 'quint16'}
-        data = {'value': turn_on, 'type': 'quint8'}
+        return get_power_state_packet(log, code_ps_all, code_ps)
+    return []
 
-        send_data.append(__create_packet_qt(code, data))
 
+def get_power_state_packet(log, code_ps_all, code_ps):
+    send_data = []
+    names_power_sources = globals().get('config_vars').get('names_power_sources')
+    pchv3_power_source = globals().get('config_vars').get('pchv3_power_source')
+
+    for id_power in names_power_sources:
+        code_id = {'value': code_ps, 'type': 'quint16'}
+        data = [{'value': id_power, 'type': 'quint8'},
+                {'value': pchv3_power_source[id_power], 'type': 'quint8'}]
+        send_data.append(__create_packet_qt(code_id, data))
+    code_ps_all = {'value': code_ps_all, 'type': 'quint16'}
+    data = {'value': all(pchv3_power_source.values()), 'type': 'quint8'}
+    send_data.append(__create_packet_qt(code_ps_all, data))
     return send_data
+
+
+def handler_pchv3_power_on_channel(log, parsing_data, request_data, response_data) -> [bytes]:
+    len_packet, code, bytes_recv = parsing_data
+    names_power_tructs = globals().get('config_vars').get('names_power_tructs')
+    names_channels = globals().get('config_vars').get('names_channels')
+    code_ps = request_data
+    if code == code_ps:
+        id_channel, id_truct, turn_on = struct.unpack('!3B', bytes_recv[4:7])
+
+        log.info(
+            '+++ Команда: \"Питание {}\", вкл = {}, канал = \"{}\"'.format(names_power_tructs.get(id_truct),
+                bool(turn_on), names_channels.get(id_channel)))
+        return [bytes_recv]
+    return []
+
+
