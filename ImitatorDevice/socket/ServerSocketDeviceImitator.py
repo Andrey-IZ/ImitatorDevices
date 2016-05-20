@@ -39,7 +39,6 @@ class ServerSocketDeviceimitator(ServerDeviceImitator):
         super().__init__(logger)
         self.buffer_size = buffer_size
         self.socket = None
-        self.func_process_events = None
         self.is_emit_send_on_connect = settings_conf.is_emit_send_on_connect
         self.is_emit_send_on_timeout = settings_conf.is_emit_send_on_timeout
         self.handler_response = settings_conf.handler_response
@@ -128,8 +127,6 @@ class ServerSocketDeviceimitator(ServerDeviceImitator):
                                 if packet:
                                     self.log.warning("<- send: {} to {}".format(byte2hex_str(packet), addr))
                                     self.socket.sendto(packet, addr)
-                if self.func_process_events:
-                    self.func_process_events()
         except socket.error as err:
             exc_str = "!ERROR: Something else happened on write to socket"
             self.log.error(exc_str)
@@ -202,15 +199,15 @@ class ServerSocketDeviceimitator(ServerDeviceImitator):
                         raise socket.error(err)
         # ----------------------------------------------------------------------------
         except socket.error as err:
-            exc_str = "!ERROR: Something else happened on read/write to socket"
+            exc_str = "!ERROR: Something else happened on read/write to socket: {}".format(err.args)
             self.log.error(exc_str)
             raise SocketDeviceException(exc_str) from err
         except ValueError as err:
-            exc_str = "!ERROR: Occurrence into handlers for process packets"
+            exc_str = "!ERROR: Occurrence into handlers for process packets: {}".format(err.args)
             self.log.error(exc_str)
             raise SocketDeviceException(exc_str) from err
         except Exception as err:
-            exc_str = "!ERROR: Occurrence unknown mistake  at time process packets"
+            exc_str = "!ERROR: Occurrence unknown mistake  at time process packets: {}".format(err.args)
             self.log.error(exc_str)
             raise SocketDeviceException(exc_str) from err
         finally:

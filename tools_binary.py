@@ -61,7 +61,9 @@ def __convert_format_qt_types(type_value_str):
 
 
 def qt_value_to_bytes(type_str, value):
-    fmt_str = __convert_format_qt_types(type_str)
-    if fmt_str and value is not None:
-        return struct.pack(fmt_str, value)
-    raise TypeError('Invalid converting from qt type string')
+    try:
+        fmt_str = __convert_format_qt_types(type_str)
+        if fmt_str and value is not None:
+            return struct.pack(fmt_str, value)
+    except Exception as err:
+        raise TypeError('Invalid converting from qt type string: {} ({}) <= {}'.format(value, type(value), err)) from err

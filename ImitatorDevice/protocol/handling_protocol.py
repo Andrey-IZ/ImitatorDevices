@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 
-import logging
 import time
-from tools_math import transpose_matrix
 from ImitatorDevice.protocol.tools_parse_yaml_protocol import str_hex2byte, load_handler, \
     load_conf_test, str_dict_keys_lower
 from ImitatorDevice.socket.socket_settings import SocketSettings
@@ -91,7 +89,6 @@ class HandlingProtocol(object):
 
     def __parse_settings(self, conf_settings):
         conf_settings = str_dict_keys_lower(conf_settings)
-
         self.__socket_settings = self.__parse_interface(conf_settings.get('socketsettings'), SocketSettings)
         self.__serial_port_settings = self.__parse_interface(conf_settings.get('serialsettings'), SerialPortSettings)
 
