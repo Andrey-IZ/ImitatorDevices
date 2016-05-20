@@ -193,7 +193,10 @@ class ServerSocketDeviceimitator(ServerDeviceImitator):
                                     self.__process_packet(client, data_recv)
                 except socket.error as err:
                     if err.args[0] == errno.WSAECONNABORTED:
-                        self.log.error('Connection closed from {}'.format(addr))
+                        self.log.error('!Error: Connection abort from {}: {}'.format(addr, err.args[1]))
+                        continue
+                    elif err.args[0] == errno.WSAECONNRESET:
+                        self.log.error('!Error: Connection reset from {}: {}'.format(addr, err.args[1]))
                         continue
                     else:
                         raise socket.error(err)
