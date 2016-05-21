@@ -70,7 +70,7 @@ def handler_pchv3_power_changer(log, parsing_data, request_data, response_data) 
             '+++ Команда: \"{}\" id = \"{}\", turn_on = {}'.format('Питание ИП', names_power_sources.get(id_power),
                                                                    bool(turn_on)))
         pchv3_power_source[id_power] = bool(turn_on)
-        return get_power_state_packet(log, code_ps_all, code_ps)
+        return __get_power_state_packet(log, code_ps_all, code_ps)
     return []
 
 
@@ -85,11 +85,16 @@ def handler_pchv3_all_power_changer(log, parsing_data, request_data, response_da
         for id_power in pchv3_power_source:
             pchv3_power_source[id_power] = turn_on
 
-        return get_power_state_packet(log, code_ps_all, code_ps)
+        return __get_power_state_packet(log, code_ps_all, code_ps)
     return []
 
 
-def get_power_state_packet(log, code_ps_all, code_ps):
+def handler_pchv3_get_power_state(response_data) -> [bytes]:
+    code_ps_all, code_ps = response_data
+    return __get_power_state_packet(None, code_ps_all, code_ps)
+
+
+def __get_power_state_packet(log, code_ps_all, code_ps):
     send_data = []
     names_power_sources = globals().get('config_vars').get('names_power_sources')
     pchv3_power_source = globals().get('config_vars').get('pchv3_power_source')
