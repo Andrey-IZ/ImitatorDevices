@@ -14,6 +14,8 @@ class ImitatorSeriaSocketlDeviceParams(ImitatorDeviceParams):
                                   action='store_true', help='Run socket server [tcp, udp]')
         self._parser.add_argument('-o', '--logfile-path', dest='logfile_path',
                                   action='store', help='Define path to log file', default='')
+        self._parser.add_argument('-r', '--show-stat', dest='show_stat',
+                                  action='store_true', help='Show results statistic parsing to log file')
         super(ImitatorSeriaSocketlDeviceParams, self)._init_args()
 
     def __str__(self):
@@ -23,6 +25,11 @@ class ImitatorSeriaSocketlDeviceParams(ImitatorDeviceParams):
                 'logfile-path={4})'.format(
             self._args.conf_path, self._args.level, self.run_serial, self.run_socket, self.logfile_path)
         return param
+    @property
+    def is_show_stat(self):
+        if not self._args:
+            return None
+        return self._args.show_stat
 
     @property
     def logfile_path(self):

@@ -94,7 +94,9 @@ if __name__ == '__main__':
 
             logger.info("Parsing configuration file: {}".format(file_conf))
             try:
-                settings_conf.parse(file_conf)
+                stat = settings_conf.parse(file_conf)
+                if params.is_show_stat:
+                    logger.info("Results parsing file {}:".format(file_conf) + stat)
             except Exception as err:
                 logger.error('>>> {}'.format(err))
                 raise Exception(err) from err
