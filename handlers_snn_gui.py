@@ -62,7 +62,6 @@ def handler_response_snn_gui_req_turn_omega(log, parsing_data, request_data, res
         packet_word2 = BitArray(length=16)
         packet_word1[8:16] = pack_bits('uint:5, uint:1, uint:2', code[0], code[1], code[2]).uint
         data = bit_array2endian_bytes([packet_word1, packet_word2])
-        data = big_endian_reverse(data)
         send_data.append(data)
 
     return send_data
@@ -86,7 +85,6 @@ def handler_response_snn_gui_aim_on(log, parsing_data, request_data, response_da
         packet_word2 = BitArray(length=16)
         packet_word1[8:16] = pack_bits('uint:5, uint:1, uint:2', code[0], code[1], code[2]).uint
         data = bit_array2endian_bytes([packet_word1, packet_word2])
-        data = big_endian_reverse(data)
         send_data.append(data)
 
     return send_data

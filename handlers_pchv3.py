@@ -79,8 +79,8 @@ def handler_pchv3_all_power_changer(log, parsing_data, request_data, response_da
     pchv3_power_source = globals().get('config_vars').get('pchv3_power_source')
     code_ps_all, code_ps = request_data, response_data
     if code_ps_all == code:
-        turn_on = qt_value_to_bytes('quint8', bytes_recv[4])
-        turn_on = bool(turn_on)
+        value = value_from_qt_bytes('quint8', bytes_recv[4:5])
+        turn_on = bool(value)
         log.info('+++ Команда: \"{}\" turn_on = {}'.format('Питание на всех ИП', turn_on))
         for id_power in pchv3_power_source:
             pchv3_power_source[id_power] = turn_on
