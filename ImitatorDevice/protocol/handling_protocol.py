@@ -42,7 +42,7 @@ class HandlingProtocol(object):
         self.__handler_dict_parser = {}
         self.__list_gen_full = []
 
-        
+        self.__delay_response_default = 0
 
     @property
     def is_emit_send_on_connect(self):
@@ -181,8 +181,10 @@ class HandlingProtocol(object):
             return None
         list_send_data = []
         list_index = []
+
         func_parser = load_handler(self.config_vars, **self.__handler_dict_parser)
-        for handler_dict_response, request, response, doc, order, index in self.__list_gen_full:
+        for handler_dict_response, request, response, doc, order, index, delay in self.__list_gen_full:
+            is_delay = False
             if order == CH_ORDER_GENERATOR_FULL:
                 if isinstance(handler_dict_response, dict):
                     list_func_handler_response = load_handler(self.config_vars, **handler_dict_response)
@@ -195,6 +197,9 @@ class HandlingProtocol(object):
                                     doc, order, index, func_handler_response.__name__))
                             list_send_data.extend(func_list_result)
                             list_index.append(index)
+                            is_delay = True
+                    if is_delay:
+                        self.__delay_response(delay)
                 else:
                     raise ValueError('!ERROR: Don\'t found keyword "{}": {}.'.format(
                         KW_HANDLER_RESPONSE, handler_dict_response))
@@ -215,7 +220,7 @@ class HandlingProtocol(object):
         self.__init_parse()
 
         cmd = str_dict_keys_lower(settings_conf)
-
+        self.__delay_response_default = cmd.get(KW_DELAY_RESPONSE)
         self.config_vars = cmd.get('config_vars', {})
         if isinstance(cmd, dict):
             parser = cmd.get('handler_parser')
@@ -246,8 +251,13 @@ class HandlingProtocol(object):
                     self.log.error(err)
                     raise Exception(str(err) + ', on index = {}'.format(index)) from err
                 continue
+
+            delay = cmd.get(KW_DELAY_RESPONSE)
+            if not delay and self.__delay_response_default:
+                delay = self.__delay_response_default
+
             if order == CH_ORDER_GENERATOR_FULL:
-                self.__list_gen_full.append((handler_response, request, response, doc, order, index))
+                self.__list_gen_full.append((handler_response, request, response, doc, order, index, delay))
                 continue
 
             handler_request = cmd.get(KW_HANDLER_REQUEST)
@@ -261,7 +271,7 @@ class HandlingProtocol(object):
                 raise ValueError("!! Error: Generating lists for responses and requests is not equal: "
                                  "{0} vs {1}, doc = '{2}', order = {3}".format(len(gen_list_resp), len(list_req), doc,
                                                                                order))
-            self.__lists_protocol.append((order, list_req, gen_list_resp, doc, index))
+            self.__lists_protocol.append((order, list_req, gen_list_resp, doc, index, delay))
 
         if self.__lists_protocol and isinstance(self.__lists_protocol[0], tuple) and len(self.__lists_protocol) > 0:
             list_unique = []
@@ -294,19 +304,19 @@ class HandlingProtocol(object):
         "GENERATOR" =   {generator_amount}: {generator_list}
         "GENERATOR-FULL" =   {generator_full_amount}: {generator_full_list}
         '''.replace('\n        ', '\n')
-        results = {'zip_list': [(item[3], item[4]) for item in self.__lists_protocol
+        results = {'zip_list': [(item[3], (item[5], item[4])) for item in self.__lists_protocol
                                 if item[0] == CH_ORDER_ZIP],
                    'zip_amount': len([item[3] for item in self.__lists_protocol
                                       if item[0] == CH_ORDER_ZIP]),
                    'semiduplex_amount': len([item[3] for item in self.__lists_protocol
                                              if item[0] == CH_ORDER_SEMIDUPLEX]),
-                   'semiduplex_list': [(item[3], item[4]) for item in self.__lists_protocol
+                   'semiduplex_list': [(item[3], (item[5], item[4])) for item in self.__lists_protocol
                                        if item[0] == CH_ORDER_SEMIDUPLEX],
-                   'generator_list': [(item[3], item[4]) for item in self.__lists_protocol
+                   'generator_list': [(item[3], (item[5], item[4])) for item in self.__lists_protocol
                                       if item[0] == CH_ORDER_GENERATOR],
                    'generator_amount': len([item[3] for item in self.__lists_protocol
                                             if item[0] == CH_ORDER_GENERATOR]),
-                   'generator_full_list': [(item[3], item[5]) for item in self.__list_gen_full],
+                   'generator_full_list': [(item[3], (item[6], item[5])) for item in self.__list_gen_full],
                    'generator_full_amount': len([item[3] for item in self.__list_gen_full]),
                    'emit_con_list': list(zip([item[0] for item in self.__list_emit_send[CH_ESTRIGGER_CON][1]],
                                              [item for item in self.__list_emit_send[CH_ESTRIGGER_CON][2]])),
@@ -331,7 +341,7 @@ class HandlingProtocol(object):
     def __generate_list_response(self, handler_dict_response, order, response, param_info):
         list_resp = []
         if isinstance(handler_dict_response, dict):
-            func_handler_response = load_handler(**handler_dict_response)
+            func_handler_response = load_handler(self.config_vars, **handler_dict_response)
             if order == CH_ORDER_GENERATOR:
                 if isinstance(func_handler_response, list):
                     return func_handler_response, response
@@ -366,7 +376,8 @@ class HandlingProtocol(object):
                     raise TypeError("Wrong defined type order interaction: doc={0}, order={1}, index = {2}, {3}".format(
                         doc, order, index, e.args))
             else:
-                raise TypeError("Don't defined handler function: doc={0}, order={1}, index = {2}. Use keyword {3}".format(
+                raise TypeError(
+                    "Don't defined handler function: doc={0}, order={1}, index = {2}. Use keyword {3}".format(
                         doc, order, index, [KW_HANDLER_RESPONSE, KW_HANDLER_REQUEST]))
         elif isinstance(data_packet, list):
             for req in data_packet:
@@ -489,6 +500,14 @@ class HandlingProtocol(object):
             value += 1
         return value
 
+    def __delay_response(self, delay):
+        if not delay or not isinstance(delay, (int, float)) or delay <= 0:
+            if not isinstance(self.__delay_response_default, (int, float)) or self.__delay_response_default <= 0:
+                return
+            delay = self.__delay_response_default
+        self.log.warning('waiting timeout {} seconds ... '.format(delay))
+        time.sleep(delay)
+
     def handler_response(self, bytes_recv) -> [bytes]:
         """
 
@@ -510,6 +529,7 @@ class HandlingProtocol(object):
             order = cmd[0]
             list_req = cmd[1]
             doc = cmd[3]
+            delay = cmd[5]
             self.log.debug("***  seek ---- order = {}, doc = {}".format(order, doc))
             if order == "generator" and self.__count_req_generator_packet >= 0 and \
                             self.__count_req_zip_packet == 0 and self.__count_req_semiduplex_packet == 0:
@@ -517,18 +537,21 @@ class HandlingProtocol(object):
                 result = self.__process_generation_reponse((list_generator_resp, response, list_req, bytes_recv),
                                                            (doc, order))
                 if result:
+                    self.__delay_response(delay)
                     return result
             elif order == "zip" and self.__count_req_zip_packet >= 0 and \
                             self.__count_req_generator_packet == 0 and self.__count_req_semiduplex_packet == 0:
                 list_resp = cmd[2]
                 result = self.__process_zip_response((list_resp, list_req, bytes_recv), (doc, order))
                 if result:
+                    self.__delay_response(delay)
                     return result
             elif order == "semiduplex" and self.__count_req_semiduplex_packet >= 0 and \
                             self.__count_req_generator_packet == 0 and self.__count_req_zip_packet == 0:
                 list_resp = cmd[2]
                 result = self.__process_semiduplex_response((list_resp, list_req, bytes_recv), (doc, order))
                 if result is not None:
+                    self.__delay_response(delay)
                     return result
 
             if self.__count_protocol == self.__len_list_protocol - 1:
