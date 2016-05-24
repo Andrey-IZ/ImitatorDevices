@@ -18,8 +18,9 @@ def __qt_create_packet(code, data):
     count_len = 1 + 1  # code + header_len
     if isinstance(data, list):
         for value in data:
-            packet.extend(qt_value_to_bytes(value.get('type'), value.get('value')))
-            count_len += 1
+            b = qt_value_to_bytes(value.get('type'), value.get('value'))
+            packet.extend(b)
+            count_len += len(b)
     else:
         packet.extend(qt_value_to_bytes(data.get('type'), data.get('value')))
         count_len += 1
@@ -67,7 +68,7 @@ def handler_pchv3_power_changer(log, parsing_data, request_data, response_data) 
     if code == code_ps:
         id_power, turn_on = struct.unpack('!2B', bytes_recv[4:6])
         log.info(
-            '+++ Команда: \"{}\" id = \"{}\", turn_on = {}'.format('Питание ИП', names_power_sources.get(id_power),
+            '+++ Команда: "{}" id = "{}", turn_on = {}'.format('Питание ИП', names_power_sources.get(id_power),
                                                                    bool(turn_on)))
         pchv3_power_source[id_power] = bool(turn_on)
         return __get_power_state_packet(log, code_ps_all, code_ps)
@@ -81,7 +82,7 @@ def handler_pchv3_all_power_changer(log, parsing_data, request_data, response_da
     if code_ps_all == code:
         value = value_from_qt_bytes('quint8', bytes_recv[4:5])
         turn_on = bool(value)
-        log.info('+++ Команда: \"{}\" turn_on = {}'.format('Питание на всех ИП', turn_on))
+        log.info('+++ Команда: "{}" turn_on = {}'.format('Питание на всех ИП', turn_on))
         for id_power in pchv3_power_source:
             pchv3_power_source[id_power] = turn_on
 
@@ -135,9 +136,9 @@ def handler_pchv3_attenuators(log, parsing_data, request_data, response_data) ->
     names_channels = globals().get('config_vars').get('names_channels')
     code_ps = request_data
     if code == code_ps:
-        if len_packet == 14:
+        if len_packet == 10:
             id_channel = value_from_qt_bytes('quint8', bytes_recv[4:5])
-            at1 = value_from_qt_bytes('double', bytes_recv[5:-1])
+            at1 = value_from_qt_bytes('float', bytes_recv[5:-1])
             at2 = value_from_qt_bytes('quint8', bytes_recv[-1:])
             log.info(
                 '+++ Команда: "Установить аттенюаторы":, АТ1 = {}, АТ2 = {}, канал = \"{}\"'.format(at1, at2,
@@ -145,7 +146,7 @@ def handler_pchv3_attenuators(log, parsing_data, request_data, response_data) ->
                                                                                                         id_channel)))
             return [__qt_create_packet({'value': code_ps, 'type': 'quint16'},
                                        [{'value': id_channel, 'type': 'quint8'},
-                                        {'value': at1, 'type': 'double'},
+                                        {'value': at1, 'type': 'float'},
                                         {'value': at2, 'type': 'quint8'}])]
             # return [bytes_recv]
         log.error('+++ ERROR: Команда: "Установить аттенюаторы": Длина пакета неверная (!= 14)')
