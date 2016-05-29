@@ -25,6 +25,7 @@ class ImitatorSeriaSocketlDeviceParams(ImitatorDeviceParams):
                 'logfile-path={4})'.format(
             self._args.conf_path, self._args.level, self.run_serial, self.run_socket, self.logfile_path)
         return param
+
     @property
     def is_show_stat(self):
         if not self._args:

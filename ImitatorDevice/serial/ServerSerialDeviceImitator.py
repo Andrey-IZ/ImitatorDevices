@@ -2,7 +2,7 @@
 # -*- coding=utf-8 -*-
 
 import serial
-from ImitatorDevice.server_device_imitator import ServerDeviceImitator
+from ImitatorDevice.server_device_imitator import ThreadServerDeviceImitator
 from tools_binary import byte2hex_str
 
 
@@ -14,35 +14,35 @@ class SerialDeviceException(Exception):
     pass
 
 
-class ServerSerialDeviceimitator(ServerDeviceImitator):
+class ServerSerialDeviceimitator(ThreadServerDeviceImitator):
     """
     """
 
     def __init__(self, settings_conf, logger):
         super().__init__(logger)
-        self.serial = None
+        self.serial = serial.Serial()
         self.handler_response = settings_conf.handler_response
         self.port_settings = settings_conf.serialport_settings
-        self.__init_serial()
+        self.__init_serial(self.port_settings)
 
-    def __init_serial(self):
-        self.serial = serial.Serial()
+    def __init_serial(self, port_settings):
         if self.port_settings.port == '':
             return
         try:
-            self.serial.port = self.port_settings.port  # , do_not_open=True)
+            self.serial.port = port_settings.port  # , do_not_open=True)
             self.serial.timeout = 0  # required so that the reader thread can exit
-            self.serial.in_baudrate = self.port_settings.baud_rate
-            self.serial.parity = self.port_settings.parity
-            self.serial.stopbits = self.port_settings.stop_bits
-            self.serial.bytesize = self.port_settings.databits
+            self.serial.baudrate = port_settings.baud_rate
+            self.serial.parity = port_settings.parity
+            self.serial.stopbits = port_settings.stop_bits
+            self.serial.bytesize = port_settings.databits
         except Exception as err:
-            exc_str = "!Error: Invalid class port settings: {}".format(self.port_settings)
+            exc_str = "!Error: Invalid class port settings: {}".format(port_settings)
             self.log.error(exc_str)
             raise SerialOpenPortException(exc_str) from err
 
-    def open_port(self):
+    def open_port(self, port_settings):
         try:
+            self.__init_serial(port_settings)
             self.serial.open()
         except serial.SerialException as err:
             exc_str = "!ERROR:  Could not open serial port {}: {}".format(self.serial.name, err.args)
@@ -50,27 +50,38 @@ class ServerSerialDeviceimitator(ServerDeviceImitator):
             raise SerialOpenPortException(exc_str) from err
         return True
 
-    def listen(self, thread_name='serial-reader'):
-        if hasattr(self.serial, 'is_open'):
-            if self.serial.is_open:
-                super().listen(thread_name=self.serial.port)
+    def open(self):
+        return self.open_port(self.port_settings)
+
+    def listen_port(self, port_settings, thread_name='serial-reader'):
+        if self.open_port(port_settings):
+            if hasattr(self.serial, 'is_open'):
+                if self.serial.is_open:
+                    super().listen(thread_name=self.serial.port)
+                    return True
+            elif hasattr(self.serial, 'isOpen'):
+                if self.serial.isOpen:
+                    super().listen(thread_name=self.serial.port)
                 return True
-        elif hasattr(self.serial, 'isOpen'):
-            if self.serial.isOpen:
-                super().listen(thread_name=self.serial.port)
-            return True
         return False
+
+    def listen(self, thread_name='serial-reader'):
+        self.open()
+        return self.listen(thread_name)
 
     def reader(self):
         """loop forever and handling packets protocol"""
         try:
-            while self.alive:
+            while self.running:
                 data_recv = self.serial.read(self.serial.inWaiting())
                 if data_recv:
                     self.log.warning("======================================")
                     self.log.warning("-> recv: {}".format((byte2hex_str(data_recv))))
 
-                    list_packets = self.handler_response(data_recv)
+                    if self.dict_values_form:
+                        list_packets = self.handler_response(data_recv, self.dict_values_form)
+                    else:
+                        list_packets = self.handler_response(data_recv)
                     if list_packets:
                         for packet in list_packets:
                             if packet:
@@ -90,3 +101,22 @@ class ServerSerialDeviceimitator(ServerDeviceImitator):
             raise SerialDeviceException(exc_str) from err
         finally:
             self.serial.close()
+
+
+def serial_server_start(settings_conf, logger):
+    is_serial_server_start = False
+    serial_server = None
+    try:
+        serial_server = ServerSerialDeviceimitator(settings_conf, logger)
+        logger.info("Serving serial port: {}".format(settings_conf.serialport_settings))
+        is_serial_server_start = serial_server.listen()
+    except SerialOpenPortException as e:
+        logger.error("Error for opening serial port {0}: {1}".format(serial_server.port_settings, e.args))
+    except Exception as e:
+        logger.error("Error by starting serial server listen: {0}".format(e.args))
+    finally:
+        if serial_server and not is_serial_server_start:
+            serial_server.stop()
+            serial_server = None
+            logger.info('Disconnected serial interface: {}'.format(serial_server))
+    return serial_server

@@ -3,7 +3,7 @@
 
 import errno
 import socket
-from ImitatorDevice.server_device_imitator import ServerDeviceImitator
+from ImitatorDevice.server_device_imitator import ThreadServerDeviceImitator
 from tools_binary import byte2hex_str
 
 
@@ -12,7 +12,8 @@ class SocketBindPortException(socket.error):
 
 
 class SocketDeviceException(Exception):
-    pass
+    def __init__(self, err):
+        super(SocketDeviceException, self).__init__(err)
 
 
 def deco_reader(fn):
@@ -31,7 +32,7 @@ def deco_reader(fn):
     return wrapper
 
 
-class ServerSocketDeviceimitator(ServerDeviceImitator):
+class ServerSocketDeviceimitator(ThreadServerDeviceImitator):
     """
     """
 
@@ -54,19 +55,30 @@ class ServerSocketDeviceimitator(ServerDeviceImitator):
             self.log.error(exc_str)
             raise SocketBindPortException(exc_str) from err
 
-    def open_port(self):
+    def __str__(self):
+        return 'ServerSocketDeviceimitator(status={}, settings={})'.format(self.running, self.socket_settings.__repr__())
+
+    def get_address(self):
+        return self.socket_settings.host, self.socket_settings.port
+
+    def open_address(self, address_bind):
+        self.socket_settings.host, self.socket_settings.port = address_bind
         try:
-            self.socket.bind((self.socket_settings.host, self.socket_settings.port))
+            self.socket.bind(address_bind)
             self.socket.setblocking(0)
         except socket.error as err:
             exc_str = "!ERROR:  Bind socket failed on port {}. Error message: {}".format(self.socket_settings.port,
                                                                                          err.args)
             self.log.error(exc_str)
-            raise SocketBindPortException(exc_str) from err
+            return False
+            # raise SocketBindPortException(exc_str) from err
         return True
 
-    def listen(self, amount_tcp_clients=1, thread_name='socket-reader'):
-        if self.socket:
+    def open(self):
+        return self.open_address((self.socket_settings.host, self.socket_settings.port))
+
+    def listen_address(self, address_bind, amount_tcp_clients=1, thread_name='socket-reader'):
+        if self.socket and self.open_address(address_bind):
             name = self.socket.getsockname()[0] + ':' + str(self.socket.getsockname()[1])
             super().listen(thread_name=name)
             if self.socket_settings.socket_type == socket.SOCK_STREAM:
@@ -80,6 +92,9 @@ class ServerSocketDeviceimitator(ServerDeviceImitator):
             return True
         return False
 
+    def listen(self, amount_tcp_clients=1, thread_name='socket-reader'):
+        return self.listen_address((self.socket_settings.host, self.socket_settings.port))
+
     @deco_reader
     def reader(self):
         pass
@@ -87,7 +102,7 @@ class ServerSocketDeviceimitator(ServerDeviceImitator):
     def _reader_udp(self):
         """loop forever and handling packets protocol"""
         try:
-            while self.alive:
+            while self.running:
                 try:
                     # end = time.time()
                     # elapsed = end - self.start_time
@@ -145,7 +160,7 @@ class ServerSocketDeviceimitator(ServerDeviceImitator):
     def _reader_tcp(self):
         """loop forever and handling packets protocol"""
         try:
-            while self.alive:
+            while self.running:
                 try:
                     try:
                         client, addr = self.socket.accept()
@@ -162,7 +177,7 @@ class ServerSocketDeviceimitator(ServerDeviceImitator):
 
                         # если в блоке except вы выходите,
                         # ставить else и отступ не нужно
-                        while self.alive:
+                        while self.running:
                             try:
                                 if self.is_emit_send_on_timeout:
                                     for packet in self.handler_emit_send(is_timeout=True):
@@ -225,3 +240,22 @@ class ServerSocketDeviceimitator(ServerDeviceImitator):
                 if packet:
                     self.log.warning("<- send: {}".format(byte2hex_str(packet)))
                     client.send(packet)
+
+
+def socket_server_start(settings_conf, logger):
+    is_socket_server_start = False
+    socket_server = None
+    try:
+        socket_server = ServerSocketDeviceimitator(settings_conf, logger)
+        logger.info("Serving socket port: {}".format(settings_conf.socket_settings))
+        is_socket_server_start = socket_server.listen()
+    except SocketBindPortException as err:
+        raise SocketDeviceException(err) from err
+    except Exception as err:
+        raise SocketDeviceException(err) from err
+    finally:
+        if socket_server and not is_socket_server_start:
+            socket_server.stop()
+            socket_server = None
+            logger.info('Disconnected socket interface: {}'.format(socket_server))
+    return socket_server

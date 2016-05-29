@@ -26,7 +26,7 @@ class SocketSettings(object):
         )
 
     def __repr__(self):
-        return "SocketSettings (host={1}, socket_type={2}, timeout={3}, delay_response={4})".format(
+        return "SocketSettings (port={0}, host={1}, socket_type={2}, timeout={3}, delay_response={4})".format(
                self.port, self.host, self.socket_type_str, self.timeout, self.delay_response
         )
 
