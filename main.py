@@ -9,11 +9,12 @@ import os.path
 from cli.main_cli import start_server_cli
 from gui.main_gui import start_server_gui
 from gui.qt_logging import QtHandler
+from libs.log_tools.logger import Logger
 
 
 def init_logging(params):
-    logger = logging.getLogger('ImitatorSomeDevice')
-    log_formatter = logging.Formatter(u'%(asctime)-15s <%(levelname)-1.1s> [%(threadName)s] %(message)s')
+    logger = Logger('ImitatorSomeDevice')
+    log_formatter = logging.Formatter(u'%(asctime)-15s <%(levelname)-1.1s> [%(name)s~%(qthreadName)s] %(message)s')
     logger.setLevel(params.level)
 
     if params.logfile_path:

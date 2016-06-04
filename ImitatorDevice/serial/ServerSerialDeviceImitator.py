@@ -19,7 +19,7 @@ class ServerSerialDeviceimitator(ThreadServerDeviceImitator):
     """
 
     def __init__(self, settings_conf, logger):
-        super().__init__(logger)
+        super(ServerSerialDeviceimitator, self).__init__(logger)
         self.serial = serial.Serial()
         self.handler_response = settings_conf.handler_response
         self.port_settings = settings_conf.serialport_settings
@@ -57,17 +57,16 @@ class ServerSerialDeviceimitator(ThreadServerDeviceImitator):
         if self.open_port(port_settings):
             if hasattr(self.serial, 'is_open'):
                 if self.serial.is_open:
-                    super().listen(thread_name=self.serial.port)
+                    super(ServerSerialDeviceimitator, self).listen(thread_name=self.serial.port)
                     return True
             elif hasattr(self.serial, 'isOpen'):
                 if self.serial.isOpen:
-                    super().listen(thread_name=self.serial.port)
+                    super(ServerSerialDeviceimitator, self).listen(thread_name=self.serial.port)
                 return True
         return False
 
     def listen(self, thread_name='serial-reader'):
-        self.open()
-        return self.listen(thread_name)
+        return self.listen_port(self.port_settings, thread_name)
 
     def reader(self):
         """loop forever and handling packets protocol"""
@@ -79,9 +78,9 @@ class ServerSerialDeviceimitator(ThreadServerDeviceImitator):
                     self.log.warning("-> recv: {}".format((byte2hex_str(data_recv))))
 
                     if self.dict_values_form:
-                        list_packets = self.handler_response(data_recv, self.dict_values_form)
+                        list_packets = self.handler_response(self.log, data_recv, self.dict_values_form)
                     else:
-                        list_packets = self.handler_response(data_recv)
+                        list_packets = self.handler_response(self.log, data_recv)
                     if list_packets:
                         for packet in list_packets:
                             if packet:

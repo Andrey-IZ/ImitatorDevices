@@ -24,7 +24,7 @@ class HandlingProtocol(object):
     def __init__(self, logger):
         self.__serial_port_settings = []
         self.__socket_settings = []
-        self.log = logger
+        self._log = logger
         self.config_vars = {}
 
         self.__lists_protocol = []
@@ -86,6 +86,14 @@ class HandlingProtocol(object):
         """
         self.__port_settings = value
 
+    @property
+    def logger(self):
+        return self._log
+
+    @logger.setter
+    def logger(self, value):
+        self._log = value
+
     @staticmethod
     def __parse_interface(settings, class_settings):
         obj = class_settings()
@@ -97,9 +105,9 @@ class HandlingProtocol(object):
         self.__socket_settings = self.__parse_interface(conf_settings.get('socketsettings'), SocketSettings)
         self.__serial_port_settings = self.__parse_interface(conf_settings.get('serialsettings'), SerialPortSettings)
 
-    def handler_emit_send(self, is_connect=False, is_timeout=False) -> [bytes]:
+    def handler_emit_send(self, logger,  is_connect=False, is_timeout=False) -> [bytes]:
         if self.is_emit_send_on_connect and is_connect:
-            self.log.warning('!WARNING: Emit send packets on connection: '
+            logger.warning('!WARNING: Emit send packets on connection: '
                              '{}'.format(self.__list_emit_send[CH_ESTRIGGER_CON][1]))
             tm = time.time()
             for i in range(self.__len_list_emit_send[CH_ESTRIGGER_TIMEOUT]):
@@ -115,7 +123,7 @@ class HandlingProtocol(object):
                     list_emit_send.extend(list_send)
                     docs.append((doc, order))
                     self.__list_emit_send[CH_ESTRIGGER_TIMEOUT][1][i] = time.time()
-                    self.log.warning('!WARNING: Emit send packet on timeout = {} sec: {}'.format(timeout, docs))
+                    logger.warning('!WARNING: Emit send packet on timeout = {} sec: {}'.format(timeout, docs))
             if list_emit_send:
                 return list_emit_send
         return []
@@ -176,7 +184,7 @@ class HandlingProtocol(object):
         self.__list_emit_send[CH_ESTRIGGER_CON][1].clear()
         self.__list_emit_send[CH_ESTRIGGER_CON][2].clear()
 
-    def __process_full_generate_response_with_parser(self, bytes_recv):
+    def __process_full_generate_response_with_parser(self, logger, bytes_recv):
         if not self.__handler_dict_parser:
             return None
         list_send_data = []
@@ -189,10 +197,10 @@ class HandlingProtocol(object):
                 if isinstance(handler_dict_response, dict):
                     list_func_handler_response = load_handler(self.config_vars, **handler_dict_response)
                     for func_handler_response in list_func_handler_response:
-                        func_list_result = func_handler_response(self.log, func_parser[0](bytes_recv), request,
+                        func_list_result = func_handler_response(logger, func_parser[0](bytes_recv), request,
                                                                  response)
                         if func_list_result and isinstance(func_list_result, (list, tuple)):
-                            self.log.warning(
+                            logger.warning(
                                 u'!WARNING Handled command: "{0}", function = \"{3}\", order = {1}, index={2}'.format(
                                     doc, order, index, func_handler_response.__name__))
                             list_send_data.extend(func_list_result)
@@ -248,7 +256,7 @@ class HandlingProtocol(object):
                 try:
                     self.__parse_emit_send(cmd.get(KW_EMITSEND), handler_response, response, (doc, order, index))
                 except Exception as err:
-                    self.log.error(err)
+                    self._log.error(err)
                     raise Exception(str(err) + ', on index = {}'.format(index)) from err
                 continue
 
@@ -403,13 +411,19 @@ class HandlingProtocol(object):
                 len_list_req = len(list_req)
                 while self.__count_req_generator_packet < len_list_req:
                     packet_response = list_req[self.__count_req_generator_packet]
-                    if packet_response[0] == bytes_recv:
+                    req_bytes = None
+                    if isinstance(packet_response, (tuple,list)):
+                        if isinstance(packet_response[0], bytes):
+                            req_bytes = packet_response[0]
+                    elif isinstance(packet_response, bytes):
+                        req_bytes = packet_response
+                    if req_bytes == bytes_recv:
                         if response is None:
                             write_data = generator_resp(packet_response)
                         else:
                             write_data = generator_resp(packet_response, response)
 
-                        self.log.warning(u'!WARNING Handling command: "{0}", function = "{2}", order = {1}; '
+                        self._log.warning(u'!WARNING Handling command: "{0}", function = "{2}", order = {1}; '
                                          u'packet count = {3} of {4}'.format(doc, order, generator_resp.__name__,
                                                                              self.__count_req_generator_packet + 1,
                                                                              len_list_req))
@@ -422,7 +436,7 @@ class HandlingProtocol(object):
                                 "!Error at time processing generation response: {}".format(
                                     generator_resp.__name__))
                     if self.__count_req_generator_packet > 0:
-                        self.log.error(
+                        self._log.error(
                             u'!ERROR: Divergence protocol command\'s: command="{0}",'
                             u'line_packet="{1}", function="{2}"'.format(
                                 doc, self.__count_req_generator_packet + 1, generator_resp))
@@ -440,7 +454,7 @@ class HandlingProtocol(object):
             if packet_request == bytes_recv:
                 write_data = list_resp[self.__count_req_zip_packet]
 
-                self.log.info(u'!INFO: Handling command: "{0}", order = {1}; '
+                self._log.info(u'!INFO: Handling command: "{0}", order = {1}; '
                               u'packet count = {2} of {3}'.format(doc, order, self.__count_req_zip_packet + 1,
                                                                   len_list_req))
 
@@ -452,7 +466,7 @@ class HandlingProtocol(object):
                     raise ValueError(
                         "Error at time processing generation response: doc = {}".format(doc))
             if self.__count_req_zip_packet > 0:
-                self.log.error(
+                self._log.error(
                     u'!ERROR: Divergence protocol command\'s: command="{0}",'
                     u'line_packet="{1}"'.format(
                         doc, self.__count_req_zip_packet + 1))
@@ -469,7 +483,7 @@ class HandlingProtocol(object):
             if packet_request == bytes_recv:
                 write_data = list_resp[self.__count_req_semiduplex_packet]
 
-                self.log.info(u'!INFO: Handling command: "{0}", order = {1}; '
+                self._log.info(u'!INFO: Handling command: "{0}", order = {1}; '
                               u'packet count = {2} of {3}'.format(doc, order, self.__count_req_semiduplex_packet + 1,
                                                                   len_list_req))
                 if write_data is not None:
@@ -484,7 +498,7 @@ class HandlingProtocol(object):
                     raise ValueError(
                         "Error at time processing generation response: doc = {}".format(doc))
             if self.__count_req_semiduplex_packet > 0:
-                self.log.error(
+                self._log.error(
                     u'!ERROR: Divergence protocol command\'s: command="{0}",'
                     u'line_packet="{1}"'.format(
                         doc, self.__count_req_semiduplex_packet + 1))
@@ -505,10 +519,10 @@ class HandlingProtocol(object):
             if not isinstance(self.__delay_response_default, (int, float)) or self.__delay_response_default <= 0:
                 return
             delay = self.__delay_response_default
-        self.log.warning('waiting timeout {} seconds ... '.format(delay))
+        self._log.warning('waiting timeout {} seconds ... '.format(delay))
         time.sleep(delay)
 
-    def handler_response(self, bytes_recv) -> [bytes]:
+    def handler_response(self, logger, bytes_recv) -> [bytes]:
         """
 
         :param bytes_recv: received bytes array
@@ -516,12 +530,12 @@ class HandlingProtocol(object):
         :rtype: bytes
         """
         if len(self.__list_gen_full) > 0:
-            result = self.__process_full_generate_response_with_parser(bytes_recv)[0]
+            result = self.__process_full_generate_response_with_parser(logger, bytes_recv)[0]
             if result:
                 return result
 
         if not self.__lists_protocol:
-            self.log.error("Error: List protocol did not loaded. It is empty")
+            logger.error("Error: List protocol did not loaded. It is empty")
             return None
 
         while self.__count_protocol < self.__len_list_protocol:
@@ -530,7 +544,7 @@ class HandlingProtocol(object):
             list_req = cmd[1]
             doc = cmd[3]
             delay = cmd[5]
-            self.log.debug("***  seek ---- order = {}, doc = {}".format(order, doc))
+            logger.debug("***  seek ---- order = {}, doc = {}".format(order, doc))
             if order == "generator" and self.__count_req_generator_packet >= 0 and \
                             self.__count_req_zip_packet == 0 and self.__count_req_semiduplex_packet == 0:
                 list_generator_resp, response = cmd[2]
@@ -557,7 +571,7 @@ class HandlingProtocol(object):
             if self.__count_protocol == self.__len_list_protocol - 1:
                 if self.__count_req_semiduplex_packet == 0 and \
                                 self.__count_req_generator_packet == 0 and self.__count_req_zip_packet == 0:
-                    self.log.error(
+                    logger.error(
                         "!! Not found command of packet: {}, "
                         "amount sought protocol command's = {} of {}".format(
                             str_hex2byte(bytes_recv), self.__count_protocol + 1, self.__len_list_protocol))

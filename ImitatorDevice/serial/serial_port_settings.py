@@ -5,10 +5,10 @@ import serial
 
 
 class SerialPortSettings(object):
-    def __init__(self, port_name='', baud_rate='', databits='', parity='',
-                 stop_bits='', timeout=0, delay_response=0):
+    def __init__(self, port_name='', baud_rate=9600, databits=5, parity='N',
+                 stop_bits=1, timeout=0, delay_response=0):
         self.log = logging.getLogger('SerialPortSettings')
-        self.__serial_settings = dict(port_name=port_name, baud_rate=baud_rate,
+        self.__serial_settings = dict(port=port_name, baud_rate=baud_rate,
                                       timeout=timeout, parity=parity, stop_bits=stop_bits,
                                       databits=databits, delay_response=delay_response)
 
@@ -62,11 +62,11 @@ class SerialPortSettings(object):
 
     @property
     def port(self):
-        return self.__serial_settings['port_name']
+        return self.__serial_settings['port']
 
     @port.setter
     def port(self, value):
-        self.__serial_settings['port_name'] = value
+        self.__serial_settings['port'] = value
 
     @property
     def baud_rate(self):

@@ -69,7 +69,7 @@ def handler_pchv3_power_changer(log, parsing_data, request_data, response_data) 
         id_power, turn_on = struct.unpack('!2B', bytes_recv[4:6])
         log.info(
             '+++ Команда: "{}" id = "{}", turn_on = {}'.format('Питание ИП', names_power_sources.get(id_power),
-                                                                   bool(turn_on)))
+                                                               bool(turn_on)))
         pchv3_power_source[id_power] = bool(turn_on)
         return __get_power_state_packet(log, code_ps_all, code_ps)
     return []
@@ -168,6 +168,50 @@ def handler_pchv3_vch_truct(log, parsing_data, request_data, response_data) -> [
             return [__qt_create_packet({'value': code_ps, 'type': 'quint16'},
                                        [{'value': id_channel, 'type': 'quint8'},
                                         {'value': vch_truct, 'type': 'quint8'}])]
-            # return [bytes_recv]
         log.error('+++ ERROR: Команда: "Установить аттенюаторы": Длина пакета неверная (!= 14)')
+    return []
+
+
+def handler_pchv3_state_aru(log, parsing_data, request_data, response_data) -> [bytes]:
+    len_packet, code, bytes_recv = parsing_data
+    names_channels = globals().get('config_vars').get('names_channels')
+    # names_vch_tructs = globals().get('config_vars').get('names_vch_tructs')
+    code_ps = request_data
+    if code == code_ps:
+        if len_packet == 6:
+            id_channel = value_from_qt_bytes('quint8', bytes_recv[4:5])
+            state_aru = value_from_qt_bytes('quint8', bytes_recv[-1:])
+            log.info(
+                '+++ Команда: "Установить состояние АРУ тракта":, АРУ = {}, канал = \"{}\"'.format(
+                   'выкл' if state_aru == 0 else 'вкл', names_channels.get(id_channel)))
+            return [__qt_create_packet({'value': code_ps, 'type': 'quint16'},
+                                       [{'value': id_channel, 'type': 'quint8'},
+                                        {'value': state_aru, 'type': 'quint8'}])]
+            # return [bytes_recv]
+        log.error('+++ ERROR: Команда: "Установить состояние АРУ тракта": Длина пакета неверная (!= 6)')
+    return []
+
+
+def handler_pchv3_fapch_codes(log, parsing_data, request_data, response_data) -> [bytes]:
+    len_packet, code, bytes_recv = parsing_data
+    names_channels = globals().get('config_vars').get('names_channels')
+    code_req, code_resp = request_data
+    if code == code_req:
+        id_channel = value_from_qt_bytes('quint8', bytes_recv[4:5])
+        amount_codes = value_from_qt_bytes('quint8', bytes_recv[5:6])
+        len_list = len(bytes_recv[6:])
+        if amount_codes*5 != len_list:
+            log.error('+++ ERROR: list\'s length is invalid: {} vs {}'.format(amount_codes, len_list))
+        list_codes_fapch = []
+        for i in range(0, amount_codes, 2):
+            reg = value_from_qt_bytes('quint8', bytes_recv[i + 6: i + 7])
+            bits = value_from_qt_bytes('quint8', bytes_recv[i + 7: i + 8])
+            list_codes_fapch.append(('{0:X}h'.format(reg), '{0:b}'.format(bits)))
+        log.info(
+            '+++ Команда: "Установить таблицу кодов ФАПЧ": канал = \"{}\" ФАПЧ = "{}"'.format(
+                names_channels.get(id_channel), list_codes_fapch))
+        return [bytes.fromhex(response_data)]
+        # return [__qt_create_packet({'value': code_resp, 'type': 'quint16'},
+        #                            [{'value': id_channel, 'type': 'quint8'},
+        #                             {'value': True, 'type': 'quint8'}])]
     return []

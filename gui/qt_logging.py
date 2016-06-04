@@ -11,14 +11,7 @@ class QtHandler(logging.Handler):
         record = self.format(record)
         # if record: XStream.stdout().write('%s\n' % record)
         if record:
-            XStream.stdout().write("{}\n".format(record))
-
-
-logger = logging.getLogger(__name__)
-handler = QtHandler()
-handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
-logger.addHandler(handler)
-logger.setLevel(logging.DEBUG)
+            XStream.stdout().write("{}".format(record))
 
 
 class XStream(QtCore.QObject):
@@ -49,3 +42,11 @@ class XStream(QtCore.QObject):
             XStream._stderr = XStream()
             sys.stderr = XStream._stderr
         return XStream._stderr
+
+
+if __name__ == '__main__':
+    logger = logging.getLogger(__name__)
+    handler = QtHandler()
+    handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
+    logger.addHandler(handler)
+    logger.setLevel(logging.DEBUG)

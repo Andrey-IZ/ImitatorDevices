@@ -7,7 +7,7 @@ import os.path
 
 from ImitatorDevice.serial.ServerSerialDeviceImitator import *
 from ImitatorDevice.socket.ServerSocketDeviceImitator import *
-
+import copy
 
 def start_server_cli(logger, params, settings_conf, file_conf):
     if params.run_serial or params.run_socket:
@@ -32,9 +32,11 @@ def start_server_cli(logger, params, settings_conf, file_conf):
             try:
                 try:
                     if params.run_serial:
-                        serial_server = serial_server_start(settings_conf, logger)
+                        serial_logger = copy.copy(logger)
+                        serial_server = serial_server_start(settings_conf, serial_logger)
                     if params.run_socket:
-                        socket_server = socket_server_start(settings_conf, logger)
+                        socket_logger = copy.copy(logger)
+                        socket_server = socket_server_start(settings_conf, socket_logger)
 
                     if not serial_server and not socket_server:
                         print(u">>> Imitator device was stop")

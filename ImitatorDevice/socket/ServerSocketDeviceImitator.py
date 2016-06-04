@@ -37,7 +37,7 @@ class ServerSocketDeviceimitator(ThreadServerDeviceImitator):
     """
 
     def __init__(self, settings_conf, logger, buffer_size=1024):
-        super().__init__(logger)
+        super(ServerSocketDeviceimitator, self).__init__(logger)
         self.buffer_size = buffer_size
         self.socket = None
         self.is_emit_send_on_connect = settings_conf.is_emit_send_on_connect
@@ -50,6 +50,7 @@ class ServerSocketDeviceimitator(ThreadServerDeviceImitator):
     def __init_socket(self):
         try:
             self.socket = socket.socket(socket.AF_INET, self.socket_settings.socket_type)
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         except Exception as err:
             exc_str = "!Error: Invalid class port settings: {}".format(self.socket_settings)
             self.log.error(exc_str)
@@ -78,15 +79,15 @@ class ServerSocketDeviceimitator(ThreadServerDeviceImitator):
         return self.open_address((self.socket_settings.host, self.socket_settings.port))
 
     def listen_address(self, address_bind, amount_tcp_clients=1, thread_name='socket-reader'):
-        if self.socket and self.open_address(address_bind):
+        if self.open_address(address_bind) and self.socket:
             name = self.socket.getsockname()[0] + ':' + str(self.socket.getsockname()[1])
-            super().listen(thread_name=name)
+            super(ServerSocketDeviceimitator, self).listen(thread_name=name)
             if self.socket_settings.socket_type == socket.SOCK_STREAM:
                 self.socket.listen(amount_tcp_clients)
-                # super().listen(thread_name='tcp-reader')
+                # super().listen(qthread_name='tcp-reader')
             elif self.socket_settings.socket_type == socket.SOCK_DGRAM:
                 pass
-                # super().listen(thread_name='udp-reader')
+                # super().listen(qthread_name='udp-reader')
             else:
                 return False
             return True
@@ -140,7 +141,7 @@ class ServerSocketDeviceimitator(ThreadServerDeviceImitator):
                         if list_packets:
                             for packet in list_packets:
                                 if packet:
-                                    self.log.warning("<- send: {} to {}".format(byte2hex_str(packet), addr))
+                                    self.log.warning("<- send: {} to {}".format(byte2hex_str(packet), addr), extra=self.log_var)
                                     self.socket.sendto(packet, addr)
         except socket.error as err:
             exc_str = "!ERROR: Something else happened on write to socket"
@@ -155,6 +156,7 @@ class ServerSocketDeviceimitator(ThreadServerDeviceImitator):
             self.log.error(exc_str)
             raise SocketDeviceException(exc_str) from err
         finally:
+            self.socket.shutdown(socket.SHUT_RD)
             self.socket.close()
 
     def _reader_tcp(self):
@@ -170,7 +172,7 @@ class ServerSocketDeviceimitator(ThreadServerDeviceImitator):
                         self.log.error('Connecting client from: {}'.format(addr))
                         client.setblocking(0)  # снимаем блокировку и тут тоже
                         if self.is_emit_send_on_connect:
-                            for packet in self.handler_emit_send(is_connect=True):
+                            for packet in self.handler_emit_send(self.log, is_connect=True):
                                 if packet:
                                     client.send(packet)
                                     self.log.warning("<- send: {}".format(byte2hex_str(packet)))
@@ -180,7 +182,7 @@ class ServerSocketDeviceimitator(ThreadServerDeviceImitator):
                         while self.running:
                             try:
                                 if self.is_emit_send_on_timeout:
-                                    for packet in self.handler_emit_send(is_timeout=True):
+                                    for packet in self.handler_emit_send(self.log, is_timeout=True):
                                         if packet:
                                             client.send(packet)
                                             self.log.warning("<- send: {} <timeout>".format(byte2hex_str(packet)))
@@ -229,12 +231,13 @@ class ServerSocketDeviceimitator(ThreadServerDeviceImitator):
             self.log.error(exc_str)
             raise SocketDeviceException(exc_str) from err
         finally:
+            # self.socket.shutdown(socket.SHUT_RD)
             self.socket.close()
 
     def __process_packet(self, client, data_recv):
         self.log.warning("======================================")
         self.log.warning("-> recv: {}".format((byte2hex_str(data_recv))))
-        list_packets = self.handler_response(data_recv)
+        list_packets = self.handler_response(self.log, data_recv)
         if list_packets:
             for packet in list_packets:
                 if packet:
