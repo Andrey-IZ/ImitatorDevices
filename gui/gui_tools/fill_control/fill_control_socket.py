@@ -12,13 +12,14 @@ FC_SOCKET_CMB_PORT, FC_SOCKET_CMB_ADDRESS = ('port_cmb', 'address_cmb')
 
 
 class FillControlSocket(object):
-    def __init__(self, log):
+    def __init__(self, log, settings_socket):
         self.socket = None
         self.__settings_default = {FC_SOCKET_CMB_PORT: '127.0.0.1',
                                    FC_SOCKET_CMB_ADDRESS: 11000}
         self.log = log
         self.__port = self.__settings_default[FC_SOCKET_CMB_PORT]
         self.__address = self.__settings_default[FC_SOCKET_CMB_ADDRESS]
+        self.settings = self.__load_socket_settings(settings_socket)
 
     @property
     def port(self):
@@ -28,21 +29,22 @@ class FillControlSocket(object):
     def address(self):
         return self.__address
 
-    def load_socket_settings(self, filename):
+    def __load_socket_settings(self, set_sc):
         try:
-            with open(filename, 'rt', encoding='utf-8') as file:
-                settings = json.loads(file)
-            if settings and settings.get('socket'):
-                return settings.get('socket')
+            if set_sc:
+                settings = dict()
+                settings[FC_SOCKET_CMB_PORT] = set_sc.port if set_sc else self.__settings_default[FC_SOCKET_CMB_PORT]
+                host = '127.0.0.1' if set_sc.host == 'localhost' else set_sc.host
+                settings[FC_SOCKET_CMB_ADDRESS] = host if host else self.__settings_default[FC_SOCKET_CMB_PORT]
+                return settings
         except Exception:
-            print('!INFO: Did not load file settings')
+            print('!INFO: Not loaded settings')
         return self.__settings_default
 
-    def init_controls(self, filename, port_sb, address_ledit):
+    def init_controls(self, port_sb, address_ledit):
         try:
-            settings = self.load_socket_settings(filename)
-            port_sb.setValue(settings[FC_SOCKET_CMB_PORT])
-            address_ledit.setText(settings[FC_SOCKET_CMB_ADDRESS])
+            port_sb.setValue(self.settings[FC_SOCKET_CMB_PORT])
+            address_ledit.setText(self.settings[FC_SOCKET_CMB_ADDRESS])
         except Exception:
             self.log.info('!INFO: Did not load file settings for sockets')
 

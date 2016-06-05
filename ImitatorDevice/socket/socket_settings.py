@@ -5,8 +5,8 @@ import socket
 
 
 class SocketSettings(object):
-    def __init__(self, port='', host='', socket_type='', timeout=0, delay_response=0):
-        self.log = logging.getLogger('SocketSettings')
+    def __init__(self, logger, port='', host='', socket_type='', timeout=0, delay_response=0):
+        self.log = logger
         self.__socket_settings = dict(port=port, host=host, delay_response=delay_response,
                                       timeout=timeout, socket_type=socket_type)
 

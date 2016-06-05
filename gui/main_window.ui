@@ -584,7 +584,11 @@
    <widget class="QWidget" name="dockWidgetContents_2">
     <layout class="QVBoxLayout" name="verticalLayout_5">
      <item>
-      <widget class="QPlainTextEdit" name="plainTextEdit_log"/>
+      <widget class="QPlainTextEdit" name="plainTextEdit_log">
+       <property name="readOnly">
+        <bool>true</bool>
+       </property>
+      </widget>
      </item>
     </layout>
    </widget>

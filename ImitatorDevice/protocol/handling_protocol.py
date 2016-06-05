@@ -94,9 +94,8 @@ class HandlingProtocol(object):
     def logger(self, value):
         self._log = value
 
-    @staticmethod
-    def __parse_interface(settings, class_settings):
-        obj = class_settings()
+    def __parse_interface(self, settings, class_settings):
+        obj = class_settings(self.logger)
         obj.parse(settings)
         return obj
 

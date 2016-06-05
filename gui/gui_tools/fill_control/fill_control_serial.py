@@ -13,7 +13,7 @@ FC_SERIAL_CMB_PORT, FC_SERIAL_CMB_BAUDRATE, FC_SERIAL_CMB_PARITY, FC_SERIAL_CMB_
 
 
 class FillControlSerial(object):
-    def __init__(self, log):
+    def __init__(self, log, settings_serial):
         self.serial = None
         self.__PARITIES = ('none', 'even', 'odd')
         self.__BAUDRATES = [str(b) for b in (50, 75, 110, 134, 150, 200, 300, 600, 1200, 1800, 2400, 4800,
@@ -26,6 +26,7 @@ class FillControlSerial(object):
                                    FC_SERIAL_CMB_PARITY: self.parities[0], FC_SERIAL_CMB_PORT: 'COM1',
                                    FC_SERIAL_CMB_STOPBITS: self.stop_bits[0]}
         self.log = log
+        self.__settings = self.__load_serial_settings(settings_serial)
 
     @property
     def baud_rates(self):
@@ -43,17 +44,18 @@ class FillControlSerial(object):
     def stop_bits(self):
         return self.__STOPBITS
 
-    def load_serial_settings(self, filename):
-        try:
-            with open(filename, 'rt', encoding='utf-8') as file:
-                settings = json.loads(file)
-            if settings and settings.get('serial'):
-                return settings.get('serial')
-        except Exception:
-            self.log.info('!INFO: Didn\'t load file settings for serial')
+    def __load_serial_settings(self, set_ser):
+        if set_ser:
+            settings = dict()
+            settings[FC_SERIAL_CMB_PORT] = set_ser.port if set_ser.port else self.__settings_default[FC_SERIAL_CMB_PORT]
+            settings[FC_SERIAL_CMB_STOPBITS] = set_ser.stop_bits if set_ser.stop_bits else self.__settings_default[FC_SERIAL_CMB_STOPBITS]
+            settings[FC_SERIAL_CMB_DATABITS] = set_ser.databits if set_ser.databits else self.__settings_default[FC_SERIAL_CMB_DATABITS]
+            settings[FC_SERIAL_CMB_BAUDRATE] = set_ser.baud_rate if set_ser.baud_rate else self.__settings_default[FC_SERIAL_CMB_BAUDRATE]
+            settings[FC_SERIAL_CMB_PARITY] = set_ser.parity if set_ser.parity else self.__settings_default[FC_SERIAL_CMB_PARITY]
+            return settings
         return self.__settings_default
 
-    def init_controls(self, filename, port_cmb, baud_rate_cmb, parity_cmb, stop_bits_cmb, databits_cmb):
+    def init_controls(self, port_cmb, baud_rate_cmb, parity_cmb, stop_bits_cmb, databits_cmb):
         list_ports = self.get_serial_ports()
         port_cmb.addItems(list_ports)
         baud_rate_cmb.addItems(self.baud_rates)
@@ -62,18 +64,16 @@ class FillControlSerial(object):
         parity_cmb.addItems(self.parities)
 
         try:
-            settings = self.load_serial_settings(filename)
-
-            if settings[FC_SERIAL_CMB_PORT] in list_ports:
-                port_cmb.setCurrentIndex(list_ports.index(settings[FC_SERIAL_CMB_PORT]))
-            if settings[FC_SERIAL_CMB_STOPBITS] in self.stop_bits:
-                stop_bits_cmb.setCurrentIndex(self.stop_bits.index(settings[FC_SERIAL_CMB_STOPBITS]))
-            if settings[FC_SERIAL_CMB_DATABITS] in self.data_bits:
-                databits_cmb.setCurrentIndex(self.data_bits.index(settings[FC_SERIAL_CMB_DATABITS]))
-            if settings[FC_SERIAL_CMB_BAUDRATE] in self.baud_rates:
-                baud_rate_cmb.setCurrentIndex(self.baud_rates.index(settings[FC_SERIAL_CMB_BAUDRATE]))
-            if settings[FC_SERIAL_CMB_PARITY] in self.parities:
-                parity_cmb.setCurrentIndex(self.parities.index(settings[FC_SERIAL_CMB_PARITY]))
+            if self.__settings[FC_SERIAL_CMB_PORT] in list_ports:
+                port_cmb.setCurrentIndex(list_ports.index(self.__settings[FC_SERIAL_CMB_PORT]))
+            if self.__settings[FC_SERIAL_CMB_STOPBITS] in self.stop_bits:
+                stop_bits_cmb.setCurrentIndex(self.stop_bits.index(self.__settings[FC_SERIAL_CMB_STOPBITS]))
+            if self.__settings[FC_SERIAL_CMB_DATABITS] in self.data_bits:
+                databits_cmb.setCurrentIndex(self.data_bits.index(self.__settings[FC_SERIAL_CMB_DATABITS]))
+            if self.__settings[FC_SERIAL_CMB_BAUDRATE] in self.baud_rates:
+                baud_rate_cmb.setCurrentIndex(self.baud_rates.index(self.__settings[FC_SERIAL_CMB_BAUDRATE]))
+            if self.__settings[FC_SERIAL_CMB_PARITY] in self.parities:
+                parity_cmb.setCurrentIndex(self.parities.index(self.__settings[FC_SERIAL_CMB_PARITY]))
         except Exception as err:
             self.log.error('!ERROR: Invalid parsing init control: {}'.format(err))
             # print('!ERROR: Invalid parsing init control: {}'.format(err))

@@ -3,6 +3,7 @@ from PyQt4 import QtGui, uic
 from PyQt4.Qt import *
 from gui.main_window_ui import Ui_MainWindow
 from gui.gui_tools.fill_control.fill_control_serial import FillControlSerial
+from gui.gui_tools.fill_control.fill_control_socket import FillControlSocket
 from ImitatorDevice.socket.ServerSocketDeviceImitator import socket_server_start, ServerSocketDeviceimitator
 from ImitatorDevice.serial.ServerSerialDeviceImitator import serial_server_start, ServerSerialDeviceimitator
 from gui.qt_logging import XStream
@@ -30,15 +31,17 @@ class MainForm(QtGui.QMainWindow):
         self.server_socket = None
         self.settings_conf = settings_conf
         self.params = params
-        self.__init_gui_form()
 
-        XStream.stderr().messageWritten.connect(self.add_log)
+        # XStream.stderr().messageWritten.connect(self.add_log_err)
         XStream.stdout().messageWritten.connect(self.add_log)
 
         self.__parse_config()
+        self.__init_gui_form()
         self.__init_servers(settings_conf)
-        # self.__setup_model()
         self.__init_connect()
+
+
+        # self.__setup_model()
         # self.__init_udp_protocol()
 
     def __init_servers(self, settings_conf):
@@ -74,10 +77,12 @@ class MainForm(QtGui.QMainWindow):
             raise Exception(err) from err
 
     def __init_gui_form(self):
-        control_serial = FillControlSerial(self.log)
-        control_serial.init_controls('formstate.cfg', self.ui.comboBox_ListPorts, self.ui.comboBox_BaudRate,
-                                     self.ui.comboBox_DataBits,
-                                     self.ui.comboBox_StopBits, self.ui.comboBox_Parity)
+        control_socket = FillControlSocket(self.log, self.settings_conf.socket_settings)
+        control_socket.init_controls(self.ui.spinBox_Port_Bind, self.ui.lineEditIpAddressBind)
+
+        control_serial = FillControlSerial(self.log, self.settings_conf.serialport_settings)
+        control_serial.init_controls(self.ui.comboBox_ListPorts, self.ui.comboBox_BaudRate,
+                                     self.ui.comboBox_DataBits, self.ui.comboBox_StopBits, self.ui.comboBox_Parity)
 
     def __init_connect(self):
         self.ui.pushButtonStartNet.clicked.connect(self.start_net_server)
@@ -208,10 +213,17 @@ class MainForm(QtGui.QMainWindow):
         return self.model_log.rowCount()
 
     def add_log(self, fmt_str):
-        self.ui.plainTextEdit_log.appendPlainText(fmt_str)
+        fmt_str = fmt_str.replace('<', '&lt;').replace('>', '&gt;')
+        html_text = '<font color="Black" size=3 family="Times New Roman"><pre>{}</pre></font>'.format(fmt_str)
+        self.ui.plainTextEdit_log.appendHtml(html_text)
+
+    def add_log_err(self, fmt_str):
+        fmt_str = fmt_str.replace('<', '&lt;').replace('>', '&gt;')
+        html_text = '<font color="Red" size=4 family="Times New Roman"><pre><b>{}</b></pre></font>'.format(fmt_str)
+        self.ui.plainTextEdit_log.appendHtml(html_text)
 
     def __notify_launch_server(self, text, btn_start, btn_stop, grb_control, server_is_running):
-        self.add_log(text)
+        self.log.info(text)
         grb_control.setEnabled(not server_is_running)
         btn_start.setEnabled(not server_is_running)
         btn_stop.setEnabled(server_is_running)

@@ -322,6 +322,7 @@ class Ui_MainWindow(object):
         self.verticalLayout_5 = QtGui.QVBoxLayout(self.dockWidgetContents_2)
         self.verticalLayout_5.setObjectName(_fromUtf8("verticalLayout_5"))
         self.plainTextEdit_log = QtGui.QPlainTextEdit(self.dockWidgetContents_2)
+        self.plainTextEdit_log.setReadOnly(True)
         self.plainTextEdit_log.setObjectName(_fromUtf8("plainTextEdit_log"))
         self.verticalLayout_5.addWidget(self.plainTextEdit_log)
         self.dockWidget_Output.setWidget(self.dockWidgetContents_2)

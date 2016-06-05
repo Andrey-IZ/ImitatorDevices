@@ -22,11 +22,11 @@ class ServerSerialDeviceimitator(ThreadServerDeviceImitator):
         super(ServerSerialDeviceimitator, self).__init__(logger)
         self.serial = serial.Serial()
         self.handler_response = settings_conf.handler_response
-        self.port_settings = settings_conf.serialport_settings
-        self.__init_serial(self.port_settings)
+        self.serial_settings = settings_conf.serialport_settings
+        self.__init_serial(self.serial_settings)
 
     def __init_serial(self, port_settings):
-        if self.port_settings.port == '':
+        if self.serial_settings.port == '':
             return
         try:
             self.serial.port = port_settings.port  # , do_not_open=True)
@@ -40,6 +40,9 @@ class ServerSerialDeviceimitator(ThreadServerDeviceImitator):
             self.log.error(exc_str)
             raise SerialOpenPortException(exc_str) from err
 
+    def __str__(self):
+        return 'ServerSerialDeviceimitator(status={}, settings={})'.format(self.running, self.serial_settings.__repr__())
+
     def open_port(self, port_settings):
         try:
             self.__init_serial(port_settings)
@@ -51,7 +54,7 @@ class ServerSerialDeviceimitator(ThreadServerDeviceImitator):
         return True
 
     def open(self):
-        return self.open_port(self.port_settings)
+        return self.open_port(self.serial_settings)
 
     def listen_port(self, port_settings, thread_name='serial-reader'):
         if self.open_port(port_settings):
@@ -66,7 +69,7 @@ class ServerSerialDeviceimitator(ThreadServerDeviceImitator):
         return False
 
     def listen(self, thread_name='serial-reader'):
-        return self.listen_port(self.port_settings, thread_name)
+        return self.listen_port(self.serial_settings, thread_name)
 
     def reader(self):
         """loop forever and handling packets protocol"""
@@ -110,7 +113,7 @@ def serial_server_start(settings_conf, logger):
         logger.info("Serving serial port: {}".format(settings_conf.serialport_settings))
         is_serial_server_start = serial_server.listen()
     except SerialOpenPortException as e:
-        logger.error("Error for opening serial port {0}: {1}".format(serial_server.port_settings, e.args))
+        logger.error("Error for opening serial port {0}: {1}".format(serial_server.serial_settings, e.args))
     except Exception as e:
         logger.error("Error by starting serial server listen: {0}".format(e.args))
     finally:
