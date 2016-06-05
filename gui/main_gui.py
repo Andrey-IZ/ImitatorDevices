@@ -8,6 +8,7 @@ from ImitatorDevice.socket.ServerSocketDeviceImitator import socket_server_start
 from ImitatorDevice.serial.ServerSerialDeviceImitator import serial_server_start, ServerSerialDeviceimitator
 from gui.qt_logging import XStream
 import copy
+import re
 
 
 class MainForm(QtGui.QMainWindow):
@@ -31,6 +32,11 @@ class MainForm(QtGui.QMainWindow):
         self.server_socket = None
         self.settings_conf = settings_conf
         self.params = params
+        self.pattern_log = re.compile(
+            r'(?P<date>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}) &lt;(?P<msg>[A-Z])&gt;'
+            r' \[(?P<log_name>\w+)~(?P<thread_name>.*?)\]\s.*?', re.I)
+        self.repl_str = r'<font color=gray>\g<date></font> &lt;<font color=red>\g<msg></font>&gt;' \
+                        r' [<U>\g<log_name></U>~<font color="blue">\g<thread_name></font>] '
 
         # XStream.stderr().messageWritten.connect(self.add_log_err)
         XStream.stdout().messageWritten.connect(self.add_log)
@@ -213,7 +219,7 @@ class MainForm(QtGui.QMainWindow):
         return self.model_log.rowCount()
 
     def add_log(self, fmt_str):
-        fmt_str = fmt_str.replace('<', '&lt;').replace('>', '&gt;')
+        fmt_str = self.pattern_log.sub(self.repl_str, fmt_str.replace('<', '&lt;').replace('>', '&gt;'))
         html_text = '<font color="Black" size=3 family="Times New Roman"><pre>{}</pre></font>'.format(fmt_str)
         self.ui.plainTextEdit_log.appendHtml(html_text)
 
