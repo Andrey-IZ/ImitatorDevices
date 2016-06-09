@@ -51,6 +51,10 @@ class ThreadServerDeviceImitator(WorkerThread):
     @QtCore.pyqtSlot(dict)
     def slot_values_form_changed(self, dict_values_form):
         self.dict_values_form = dict_values_form
+        self.handler_response_form_values()
+
+    def handler_response_form_values(self):
+        pass
 
     def _do_work(self):
         """loop forever and handling packets protocol"""

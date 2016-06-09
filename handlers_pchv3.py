@@ -2,6 +2,7 @@
 
 from tools_binary import qt_value_to_bytes, value_from_qt_bytes
 import struct
+import random
 
 
 def handler_parser_pchv3(bytes_recv):
@@ -46,7 +47,7 @@ def __create_packet(code, data):
     return bytes(packet)
 
 
-def handler_pchv3_unversal(response_data) -> [bytes]:
+def handler_pchv3_unversal(log, response_data) -> [bytes]:
     """
     Generates packet from code and an item of data
     :param response_data:
@@ -90,7 +91,7 @@ def handler_pchv3_all_power_changer(log, parsing_data, request_data, response_da
     return []
 
 
-def handler_pchv3_get_power_state(response_data) -> [bytes]:
+def handler_pchv3_get_power_state(log, response_data) -> [bytes]:
     code_ps_all, code_ps = response_data
     return __get_power_state_packet(None, code_ps_all, code_ps)
 
@@ -183,7 +184,7 @@ def handler_pchv3_state_aru(log, parsing_data, request_data, response_data) -> [
             state_aru = value_from_qt_bytes('quint8', bytes_recv[-1:])
             log.info(
                 '+++ Команда: "Установить состояние АРУ тракта":, АРУ = {}, канал = \"{}\"'.format(
-                   'выкл' if state_aru == 0 else 'вкл', names_channels.get(id_channel)))
+                    'выкл' if state_aru == 0 else 'вкл', names_channels.get(id_channel)))
             return [__qt_create_packet({'value': code_ps, 'type': 'quint16'},
                                        [{'value': id_channel, 'type': 'quint8'},
                                         {'value': state_aru, 'type': 'quint8'}])]
@@ -200,7 +201,7 @@ def handler_pchv3_fapch_codes(log, parsing_data, request_data, response_data) ->
         id_channel = value_from_qt_bytes('quint8', bytes_recv[4:5])
         amount_codes = value_from_qt_bytes('quint8', bytes_recv[5:6])
         len_list = len(bytes_recv[6:])
-        if amount_codes*5 != len_list:
+        if amount_codes * 5 != len_list:
             log.error('+++ ERROR: list\'s length is invalid: {} vs {}'.format(amount_codes, len_list))
         list_codes_fapch = []
         for i in range(0, amount_codes, 2):
@@ -215,3 +216,52 @@ def handler_pchv3_fapch_codes(log, parsing_data, request_data, response_data) ->
         #                            [{'value': id_channel, 'type': 'quint8'},
         #                             {'value': True, 'type': 'quint8'}])]
     return []
+
+
+def handler_pchv3_update_sensors(log, response_data) -> [bytes]:
+    names_channels = globals().get('config_vars').get('names_channels')
+
+    t1 = random.randrange(100, 1000) / 10
+    t2 = random.randrange(100, 1000) / 10
+    t_top = random.randrange(0, 2)
+    t_crit = random.randrange(0, 2)
+    t_95 = random.randrange(0, 2)
+    p57v1 = random.randrange(0, 2)
+    p57v2 = random.randrange(0, 2)
+    p60v = True
+    p75v = False
+    clk = random.randrange(0, 1)
+    count_channel = len(names_channels)
+    list_info =[]
+    list_sensors = [{'value': count_channel, 'type': 'quint8'}]
+
+    for id_channel in range(len(names_channels)):
+        fapch_syn = random.randrange(0, 2)
+        fapch_jit = random.randrange(0, 2)
+        acp = random.randrange(10, 500) / 10
+        list_info.extend([{'fapch_syn':fapch_syn, 'fapch_jit':fapch_jit, 'acp': acp}])
+
+        list_sensors.append({'value': fapch_syn, 'type': 'bool'})
+        list_sensors.append({'value': fapch_jit, 'type': 'bool'})
+        list_sensors.append({'value': acp, 'type': 'float'})
+
+    log.info('Данные: t1={}, t2={}, t_top={}, t_crit={}, t_95={}, p57v1={}, p57v2={}, p60v={}, p75v={}, clk={}'.format(
+             t1, t2, t_top, t_crit, t_95, p57v1, p57v2, p60v, p75v, clk))
+
+    code = {'value': 2, 'type': 'quint16'}
+    data = [{'value': t1, 'type': 'float'},
+            {'value': t2, 'type': 'float'},
+            {'value': t_top, 'type': 'quint8'},
+            {'value': t_crit, 'type': 'quint8'},
+            {'value': t_95, 'type': 'quint8'},
+            {'value': p57v1, 'type': 'quint8'},
+            {'value': p57v2, 'type': 'quint8'},
+            {'value': p60v, 'type': 'quint8'},
+            {'value': p75v, 'type': 'quint8'},
+            {'value': clk, 'type': 'quint8'},
+            ]
+    data.extend(list_sensors)
+    log.info(
+        '+++ Команда: "Обновление сенсоров": канал = \"{}\" StateSensors = "{}"'.format(
+            names_channels.get(id_channel), list_info))
+    return [__qt_create_packet(code, data)]

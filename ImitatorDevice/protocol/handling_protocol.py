@@ -11,7 +11,7 @@ CH_ORDER_GENERATOR, CH_ORDER_ZIP, CH_ORDER_SEMIDUPLEX, CH_ORDER_GENERATOR_FULL =
     'generator', 'zip', 'semiduplex', 'full-generator')
 KW_DOC, KW_RESPONSE, KW_REQUEST, KW_EMITSEND, KW_EMIT_TRIGGER, KW_EMIT_TIMEOUT, KW_HANDLER_RESPONSE, KW_HANDLER_REQUEST = (
     'doc', 'response', 'request', 'emit_send', 'trigger', 'timeout', 'handler_response', 'handler_request')
-KW_ORDER, KW_DELAY_RESPONSE, KW_EMIT_LIMIT = ('order', 'delay_response', 'limit')
+KW_ORDER, KW_DELAY_RESPONSE, KW_EMIT_LIMIT, KW_HANDLER_PARSER = ('order', 'delay_response', 'limit', 'handler_parser')
 CHLIST_ORDER = (CH_ORDER_GENERATOR, CH_ORDER_ZIP, CH_ORDER_SEMIDUPLEX, CH_ORDER_GENERATOR_FULL)
 CHLIST_TRIGGER = (CH_ESTRIGGER_CON, CH_ESTRIGGER_TIMEOUT)
 
@@ -119,56 +119,87 @@ class HandlingProtocol(object):
             docs = []
             for i, (timeout, list_send, doc, order) in enumerate(self.__list_emit_send[CH_ESTRIGGER_TIMEOUT][0]):
                 if time.time() - self.__list_emit_send[CH_ESTRIGGER_TIMEOUT][1][i] >= timeout:
-                    list_emit_send.extend(list_send)
-                    docs.append((doc, order))
-                    self.__list_emit_send[CH_ESTRIGGER_TIMEOUT][1][i] = time.time()
+                    if order != CH_ORDER_GENERATOR_FULL:
+                        list_emit_send.extend(list_send)
+                        docs.append((doc, order))
+                    else:
+                        list_send = self.__process_full_generate_emit_response(logger, list_send)
+                        list_emit_send.extend(list_send)
+                        docs.append((doc, order))
+                        self.__list_emit_send[CH_ESTRIGGER_TIMEOUT][1][i] = time.time()
                     logger.warning('!WARNING: Emit send packet on timeout = {} sec: {}'.format(timeout, docs))
             if list_emit_send:
                 return list_emit_send
         return []
 
+    def __process_full_generate_emit_response(self, logger, param_gen_full):
+        if not self.__handler_dict_parser:
+            return None
+        list_send_data = []
+        handler_dict_response, response, param_info = param_gen_full
+        doc, order, index = param_info
+        if order == CH_ORDER_GENERATOR_FULL:
+            if isinstance(handler_dict_response, dict):
+                list_func_handler_response = load_handler(self.config_vars, **handler_dict_response)
+                for func_handler_response in list_func_handler_response:
+                    func_list_result = func_handler_response(logger, response)
+                    if func_list_result and isinstance(func_list_result, (list, tuple)):
+                        logger.warning(
+                            u'!WARNING Handled command: "{0}", function = \"{3}\", order = {1}, index={2}'.format(
+                                doc, order, index, func_handler_response.__name__))
+                        list_send_data.extend(func_list_result)
+            else:
+                raise ValueError('!ERROR: Don\'t found keyword "{}": {}.'.format(
+                    KW_HANDLER_RESPONSE, handler_dict_response))
+        else:
+            raise ValueError('!ERROR: Wrong using order "{}": Use order: {}'.format(order, CH_ORDER_GENERATOR_FULL))
+
+        return list_send_data
+
     def __parse_emit_send(self, dict_emit, handler_dict_response, response, param_info):
         if isinstance(dict_emit, dict):
             trigger = dict_emit.get(KW_EMIT_TRIGGER, '')
             doc, order, index_conf = param_info
-            if order != CH_ORDER_GENERATOR_FULL:
-                if trigger:
-                    try:
+            if trigger:
+                try:
+                    if order != CH_ORDER_GENERATOR_FULL:
                         list_send = self.__genearate_list_packet(handler_dict_response, response, param_info)
-                    except Exception as err:
-                        raise ValueError(err) from err
-                    if list_send:
-                        if isinstance(trigger, list):
-                            for trig in trigger:
-                                self.__add_list_emit_send(dict_emit, doc, order, list_send, trig, index_conf)
-                        elif isinstance(trigger, str):
-                            trigger = trigger.lower().strip()
-                            self.__add_list_emit_send(dict_emit, doc, order, list_send, trigger, index_conf)
-                else:
-                    raise ValueError('!Error: trigger into emit_send is not unknown: {}',
-                                     dict_emit.get(KW_EMIT_TRIGGER, ''))
+                    else:
+                        list_send = handler_dict_response, response, param_info
+                except Exception as err:
+                    raise ValueError(err) from err
+                if list_send:
+                    if isinstance(trigger, list):
+                        for trig in trigger:
+                            self.__add_list_emit_send(dict_emit, doc, order, list_send, trig, index_conf)
+                    elif isinstance(trigger, str):
+                        trigger = trigger.lower().strip()
+                        self.__add_list_emit_send(dict_emit, doc, order, list_send, trigger, index_conf)
             else:
-                raise ValueError(
-                    '!ERROR: Wrong option "{}" for emit trigger: "{}", doc = "{}". Use order in: {}'.format(
-                        order, trigger, doc, [x for x in CHLIST_ORDER if x != CH_ORDER_GENERATOR_FULL]))
+                raise ValueError('!Error: trigger into emit_send is not unknown: {}',
+                                 dict_emit.get(KW_EMIT_TRIGGER, ''))
+            # else:
+            #     raise ValueError(
+            #         '!ERROR: Wrong option "{}" for emit trigger: "{}", doc = "{}". Use order in: {}'.format(
+            #             order, trigger, doc, [x for x in CHLIST_ORDER if x != CH_ORDER_GENERATOR_FULL]))
         return None
 
     def __add_list_emit_send(self, dict_emit, doc, order, list_send, trigger, index_conf):
-        if order != CH_ORDER_GENERATOR_FULL:
-            if trigger == CH_ESTRIGGER_CON:  # on_connection
-                self.__list_emit_send[CH_ESTRIGGER_CON][0].extend(list_send)
-                self.__list_emit_send[CH_ESTRIGGER_CON][1].append([doc, order])
-                self.__list_emit_send[CH_ESTRIGGER_CON][2].append(index_conf)
-            if trigger == CH_ESTRIGGER_TIMEOUT:  # on_timeout
-                timeout = dict_emit.get(KW_EMIT_TIMEOUT, 1)
-                self.__list_emit_send[CH_ESTRIGGER_TIMEOUT][0].append([timeout, list_send, doc, order])
-                self.__list_emit_send[CH_ESTRIGGER_TIMEOUT][2].append(index_conf)
-            elif trigger != CH_ESTRIGGER_CON:
-                raise ValueError('!Error: trigger into emit_send is unknown: doc={}, trigger={}; timeout={}'.format(
-                    doc, trigger, dict_emit.get(KW_EMIT_TIMEOUT, '')))
-        else:
-            raise ValueError('!ERROR: Wrong option "{}" for emit trigger: "{}", doc = "{}". Use order in: {}'.format(
-                order, trigger, doc, [x for x in CHLIST_ORDER if x != CH_ORDER_GENERATOR_FULL]))
+        # if order != CH_ORDER_GENERATOR_FULL:
+        if trigger == CH_ESTRIGGER_CON:  # on_connection
+            self.__list_emit_send[CH_ESTRIGGER_CON][0].extend(list_send)
+            self.__list_emit_send[CH_ESTRIGGER_CON][1].append([doc, order])
+            self.__list_emit_send[CH_ESTRIGGER_CON][2].append(index_conf)
+        if trigger == CH_ESTRIGGER_TIMEOUT:  # on_timeout
+            timeout = dict_emit.get(KW_EMIT_TIMEOUT, 1)
+            self.__list_emit_send[CH_ESTRIGGER_TIMEOUT][0].append([timeout, list_send, doc, order])
+            self.__list_emit_send[CH_ESTRIGGER_TIMEOUT][2].append(index_conf)
+        elif trigger != CH_ESTRIGGER_CON:
+            raise ValueError('!Error: trigger into emit_send is unknown: doc={}, trigger={}; timeout={}'.format(
+                doc, trigger, dict_emit.get(KW_EMIT_TIMEOUT, '')))
+        # else:
+        #     raise ValueError('!ERROR: Wrong option "{}" for emit trigger: "{}", doc = "{}". Use order in: {}'.format(
+        #         order, trigger, doc, [x for x in CHLIST_ORDER if x != CH_ORDER_GENERATOR_FULL]))
 
     def __init_parse(self):
         self.__lists_protocol.clear()
@@ -215,7 +246,7 @@ class HandlingProtocol(object):
 
         return list_send_data, list_index
 
-    def parse(self, file_name):
+    def parse(self, file_name, gui_protocol=None):
         """
         It makes parsing file_name and generates lists of protocol
         :param file_name:
@@ -230,9 +261,12 @@ class HandlingProtocol(object):
         self.__delay_response_default = cmd.get(KW_DELAY_RESPONSE)
         self.config_vars = cmd.get('config_vars', {})
         if isinstance(cmd, dict):
-            parser = cmd.get('handler_parser')
+            parser = cmd.get(KW_HANDLER_PARSER)
             if parser:
                 self.__handler_dict_parser = parser
+            gui_dict = cmd.get('gui')
+            if gui_dict and gui_protocol:
+                gui_protocol.append(gui_dict)
 
         for index, cmd in enumerate(conf[1:]):
             cmd = str_dict_keys_lower(cmd)
@@ -262,6 +296,10 @@ class HandlingProtocol(object):
             delay = cmd.get(KW_DELAY_RESPONSE)
             if not delay and self.__delay_response_default:
                 delay = self.__delay_response_default
+
+            gui_dict = cmd.get('gui')
+            if gui_dict and gui_protocol:
+                gui_protocol.append(gui_dict)
 
             if order == CH_ORDER_GENERATOR_FULL:
                 self.__list_gen_full.append((handler_response, request, response, doc, order, index, delay))
@@ -374,9 +412,9 @@ class HandlingProtocol(object):
                 try:
                     for func in func_handler:
                         if data_packet is None:
-                            res = func()
+                            res = func(self._log)
                         else:
-                            res = func(data_packet)
+                            res = func(self._log, data_packet)
                         if res:
                             list_packet.extend(res)
                 except TypeError as e:

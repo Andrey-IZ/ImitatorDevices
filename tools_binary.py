@@ -57,6 +57,8 @@ def __convert_format_qt_types(type_value_str):
             fmt_str = 'f'
         elif type_value_str == 'double':
             fmt_str = 'd'
+        elif type_value_str == 'bool':
+            fmt_str = 'B'
     return '!' + fmt_str
 
 

@@ -1,6 +1,8 @@
 import sys
 from PyQt4 import QtGui, uic
 from PyQt4.Qt import *
+
+from gui.gui_tools.gui_protocol import GuiProtocol
 from gui.main_window_ui import Ui_MainWindow
 from gui.gui_tools.fill_control.fill_control_serial import FillControlSerial
 from gui.gui_tools.fill_control.fill_control_socket import FillControlSocket
@@ -32,6 +34,7 @@ class MainForm(QtGui.QMainWindow):
         self.server_socket = None
         self.settings_conf = settings_conf
         self.params = params
+        self.gui_protocol = GuiProtocol(self.log,self)
         self.pattern_log = re.compile(
             r'(?P<date>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}) &lt;(?P<msg>[A-Z])&gt;'
             r' \[(?P<log_name>\w+)~(?P<thread_name>.*?)\]\s.*?', re.I)
@@ -45,10 +48,6 @@ class MainForm(QtGui.QMainWindow):
         self.__init_gui_form()
         self.__init_servers(settings_conf)
         self.__init_connect()
-
-
-        # self.__setup_model()
-        # self.__init_udp_protocol()
 
     def __init_servers(self, settings_conf):
         if settings_conf.socket_settings.host:
@@ -75,7 +74,7 @@ class MainForm(QtGui.QMainWindow):
     def __parse_config(self):
         self.log.info("Parsing configuration file: {}".format(self.file_conf))
         try:
-            stat = self.settings_conf.parse(self.file_conf)
+            stat = self.settings_conf.parse(self.file_conf, self.gui_protocol)
             if self.params.is_show_stat:
                 self.log.info("Results parsing file {}:".format(self.file_conf) + stat)
         except Exception as err:

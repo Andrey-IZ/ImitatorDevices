@@ -185,7 +185,7 @@ class ServerSocketDeviceimitator(ThreadServerDeviceImitator):
                                     for packet in self.handler_emit_send(self.log, is_timeout=True):
                                         if packet:
                                             client.send(packet)
-                                            self.log.warning("<- send: {} <timeout>".format(byte2hex_str(packet)))
+                                            self.log.warning("<- send <timeout>: {} ".format(byte2hex_str(packet)))
 
                                 data_recv = client.recv(self.buffer_size)
                             except socket.error as err:  # данных нет
