@@ -36,10 +36,11 @@ class ServerSocketDeviceimitator(ThreadServerDeviceImitator):
     """
     """
 
-    def __init__(self, settings_conf, logger, buffer_size=1024):
+    def __init__(self, settings_conf, logger, control_gui=None, buffer_size=1024):
         super(ServerSocketDeviceimitator, self).__init__(logger)
         self.buffer_size = buffer_size
         self.socket = None
+        self.__control_gui = control_gui
         self.is_emit_send_on_connect = settings_conf.is_emit_send_on_connect
         self.is_emit_send_on_timeout = settings_conf.is_emit_send_on_timeout
         self.handler_response = settings_conf.handler_response
@@ -57,7 +58,8 @@ class ServerSocketDeviceimitator(ThreadServerDeviceImitator):
             raise SocketBindPortException(exc_str) from err
 
     def __str__(self):
-        return 'ServerSocketDeviceimitator(status={}, settings={})'.format(self.running, self.socket_settings.__repr__())
+        return 'ServerSocketDeviceimitator(status={}, settings={})'.format(self.running,
+                                                                           self.socket_settings.__repr__())
 
     def get_address(self):
         return self.socket_settings.host, self.socket_settings.port
@@ -141,7 +143,8 @@ class ServerSocketDeviceimitator(ThreadServerDeviceImitator):
                         if list_packets:
                             for packet in list_packets:
                                 if packet:
-                                    self.log.warning("<- send: {} to {}".format(byte2hex_str(packet), addr), extra=self.log_var)
+                                    self.log.warning("<- send: {} to {}".format(byte2hex_str(packet), addr),
+                                                     extra=self.log_var)
                                     self.socket.sendto(packet, addr)
         except socket.error as err:
             exc_str = "!ERROR: Something else happened on write to socket"
@@ -172,7 +175,7 @@ class ServerSocketDeviceimitator(ThreadServerDeviceImitator):
                         self.log.error('Connecting client from: {}'.format(addr))
                         client.setblocking(0)  # снимаем блокировку и тут тоже
                         if self.is_emit_send_on_connect:
-                            for packet in self.handler_emit_send(self.log, is_connect=True):
+                            for packet in self.handler_emit_send(self.log, self.__control_gui, is_connect=True):
                                 if packet:
                                     client.send(packet)
                                     self.log.warning("<- send: {}".format(byte2hex_str(packet)))
@@ -182,7 +185,7 @@ class ServerSocketDeviceimitator(ThreadServerDeviceImitator):
                         while self.running:
                             try:
                                 if self.is_emit_send_on_timeout:
-                                    for packet in self.handler_emit_send(self.log, is_timeout=True):
+                                    for packet in self.handler_emit_send(self.log, self.__control_gui, is_timeout=True):
                                         if packet:
                                             client.send(packet)
                                             self.log.warning("<- send <timeout>: {} ".format(byte2hex_str(packet)))
@@ -237,7 +240,7 @@ class ServerSocketDeviceimitator(ThreadServerDeviceImitator):
     def __process_packet(self, client, data_recv):
         self.log.warning("======================================")
         self.log.warning("-> recv: {}".format((byte2hex_str(data_recv))))
-        list_packets = self.handler_response(self.log, data_recv)
+        list_packets = self.handler_response(self.log, data_recv, self.__control_gui)
         if list_packets:
             for packet in list_packets:
                 if packet:
@@ -245,11 +248,11 @@ class ServerSocketDeviceimitator(ThreadServerDeviceImitator):
                     client.send(packet)
 
 
-def socket_server_start(settings_conf, logger):
+def socket_server_start(settings_conf, logger, control_gui):
     is_socket_server_start = False
     socket_server = None
     try:
-        socket_server = ServerSocketDeviceimitator(settings_conf, logger)
+        socket_server = ServerSocketDeviceimitator(settings_conf, logger, control_gui)
         logger.info("Serving socket port: {}".format(settings_conf.socket_settings))
         is_socket_server_start = socket_server.listen()
     except SocketBindPortException as err:

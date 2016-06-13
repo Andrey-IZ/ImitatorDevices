@@ -104,7 +104,7 @@ class HandlingProtocol(object):
         self.__socket_settings = self.__parse_interface(conf_settings.get('socketsettings'), SocketSettings)
         self.__serial_port_settings = self.__parse_interface(conf_settings.get('serialsettings'), SerialPortSettings)
 
-    def handler_emit_send(self, logger,  is_connect=False, is_timeout=False) -> [bytes]:
+    def handler_emit_send(self, logger, control_gui,  is_connect=False, is_timeout=False) -> [bytes]:
         if self.is_emit_send_on_connect and is_connect:
             logger.warning('!WARNING: Emit send packets on connection: '
                              '{}'.format(self.__list_emit_send[CH_ESTRIGGER_CON][1]))
@@ -123,7 +123,7 @@ class HandlingProtocol(object):
                         list_emit_send.extend(list_send)
                         docs.append((doc, order))
                     else:
-                        list_send = self.__process_full_generate_emit_response(logger, list_send)
+                        list_send = self.__process_full_generate_emit_response(logger, control_gui, list_send)
                         list_emit_send.extend(list_send)
                         docs.append((doc, order))
                         self.__list_emit_send[CH_ESTRIGGER_TIMEOUT][1][i] = time.time()
@@ -132,7 +132,7 @@ class HandlingProtocol(object):
                 return list_emit_send
         return []
 
-    def __process_full_generate_emit_response(self, logger, param_gen_full):
+    def __process_full_generate_emit_response(self, logger,control_gui, param_gen_full):
         if not self.__handler_dict_parser:
             return None
         list_send_data = []
@@ -142,7 +142,8 @@ class HandlingProtocol(object):
             if isinstance(handler_dict_response, dict):
                 list_func_handler_response = load_handler(self.config_vars, **handler_dict_response)
                 for func_handler_response in list_func_handler_response:
-                    func_list_result = func_handler_response(logger, response)
+                    param = (response, control_gui)
+                    func_list_result = func_handler_response(logger, param)
                     if func_list_result and isinstance(func_list_result, (list, tuple)):
                         logger.warning(
                             u'!WARNING Handled command: "{0}", function = \"{3}\", order = {1}, index={2}'.format(
@@ -214,7 +215,7 @@ class HandlingProtocol(object):
         self.__list_emit_send[CH_ESTRIGGER_CON][1].clear()
         self.__list_emit_send[CH_ESTRIGGER_CON][2].clear()
 
-    def __process_full_generate_response_with_parser(self, logger, bytes_recv):
+    def __process_full_generate_response_with_parser(self, logger, bytes_recv, control_gui=None):
         if not self.__handler_dict_parser:
             return None
         list_send_data = []
@@ -227,8 +228,8 @@ class HandlingProtocol(object):
                 if isinstance(handler_dict_response, dict):
                     list_func_handler_response = load_handler(self.config_vars, **handler_dict_response)
                     for func_handler_response in list_func_handler_response:
-                        func_list_result = func_handler_response(logger, func_parser[0](bytes_recv), request,
-                                                                 response)
+                        param = (request, response, control_gui)
+                        func_list_result = func_handler_response(logger, func_parser[0](bytes_recv), param)
                         if func_list_result and isinstance(func_list_result, (list, tuple)):
                             logger.warning(
                                 u'!WARNING Handled command: "{0}", function = \"{3}\", order = {1}, index={2}'.format(
@@ -559,7 +560,7 @@ class HandlingProtocol(object):
         self._log.warning('waiting timeout {} seconds ... '.format(delay))
         time.sleep(delay)
 
-    def handler_response(self, logger, bytes_recv) -> [bytes]:
+    def handler_response(self, logger, bytes_recv, control_gui=None) -> [bytes]:
         """
 
         :param bytes_recv: received bytes array
@@ -567,7 +568,7 @@ class HandlingProtocol(object):
         :rtype: bytes
         """
         if len(self.__list_gen_full) > 0:
-            result = self.__process_full_generate_response_with_parser(logger, bytes_recv)[0]
+            result = self.__process_full_generate_response_with_parser(logger, bytes_recv, control_gui)[0]
             if result:
                 return result
 

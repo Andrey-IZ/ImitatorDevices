@@ -61,12 +61,12 @@ def handler_pchv3_unversal(log, response_data) -> [bytes]:
     raise TypeError("Invalid parameters, that divergence signature (not dict): {}".format(response_data))
 
 
-def handler_pchv3_power_changer(log, parsing_data, request_data, response_data) -> [bytes]:
+def handler_pchv3_power_changer(log, parsing_data, param_data) -> [bytes]:
     len_packet, code, bytes_recv = parsing_data
-    pchv3_power_source = globals().get('config_vars').get('pchv3_power_source')
-    names_power_sources = globals().get('config_vars').get('names_power_sources')
-    code_ps_all, code_ps = response_data, request_data
+    code_ps_all, code_ps, control_gui = param_data
     if code == code_ps:
+        pchv3_power_source = globals().get('config_vars').get('pchv3_power_source')
+        names_power_sources = globals().get('config_vars').get('names_power_sources')
         id_power, turn_on = struct.unpack('!2B', bytes_recv[4:6])
         log.info(
             '+++ Команда: "{}" id = "{}", turn_on = {}'.format('Питание ИП', names_power_sources.get(id_power),
@@ -76,11 +76,11 @@ def handler_pchv3_power_changer(log, parsing_data, request_data, response_data) 
     return []
 
 
-def handler_pchv3_all_power_changer(log, parsing_data, request_data, response_data) -> [bytes]:
+def handler_pchv3_all_power_changer(log, parsing_data, param_data) -> [bytes]:
     len_packet, code, bytes_recv = parsing_data
-    pchv3_power_source = globals().get('config_vars').get('pchv3_power_source')
-    code_ps_all, code_ps = request_data, response_data
+    code_ps_all, code_ps, control_gui = param_data
     if code_ps_all == code:
+        pchv3_power_source = globals().get('config_vars').get('pchv3_power_source')
         value = value_from_qt_bytes('quint8', bytes_recv[4:5])
         turn_on = bool(value)
         log.info('+++ Команда: "{}" turn_on = {}'.format('Питание на всех ИП', turn_on))
@@ -112,11 +112,12 @@ def __get_power_state_packet(log, code_ps_all, code_ps):
     return send_data
 
 
-def handler_pchv3_power_on_channel(log, parsing_data, request_data, response_data) -> [bytes]:
+def handler_pchv3_power_on_channel(log, parsing_data, param_data) -> [bytes]:
     len_packet, code, bytes_recv = parsing_data
     names_power_tructs = globals().get('config_vars').get('names_power_tructs')
     names_channels = globals().get('config_vars').get('names_channels')
-    code_ps = request_data
+    code_ps = param_data[0]
+
     if code == code_ps:
         id_channel, id_truct, turn_on = struct.unpack('!3B', bytes_recv[4:7])
 
@@ -132,12 +133,12 @@ def handler_pchv3_power_on_channel(log, parsing_data, request_data, response_dat
     return []
 
 
-def handler_pchv3_attenuators(log, parsing_data, request_data, response_data) -> [bytes]:
+def handler_pchv3_attenuators(log, parsing_data, param_data) -> [bytes]:
     len_packet, code, bytes_recv = parsing_data
-    names_channels = globals().get('config_vars').get('names_channels')
-    code_ps = request_data
+    code_ps = param_data[0]
     if code == code_ps:
         if len_packet == 10:
+            names_channels = globals().get('config_vars').get('names_channels')
             id_channel = value_from_qt_bytes('quint8', bytes_recv[4:5])
             at1 = value_from_qt_bytes('float', bytes_recv[5:-1])
             at2 = value_from_qt_bytes('quint8', bytes_recv[-1:])
@@ -154,13 +155,13 @@ def handler_pchv3_attenuators(log, parsing_data, request_data, response_data) ->
     return []
 
 
-def handler_pchv3_vch_truct(log, parsing_data, request_data, response_data) -> [bytes]:
+def handler_pchv3_vch_truct(log, parsing_data, param_data) -> [bytes]:
     len_packet, code, bytes_recv = parsing_data
-    names_channels = globals().get('config_vars').get('names_channels')
-    names_vch_tructs = globals().get('config_vars').get('names_vch_tructs')
-    code_ps = request_data
+    code_ps = param_data[0]
     if code == code_ps:
         if len_packet == 6:
+            names_channels = globals().get('config_vars').get('names_channels')
+            names_vch_tructs = globals().get('config_vars').get('names_vch_tructs')
             id_channel = value_from_qt_bytes('quint8', bytes_recv[4:5])
             vch_truct = value_from_qt_bytes('quint8', bytes_recv[-1:])
             log.info(
@@ -173,13 +174,13 @@ def handler_pchv3_vch_truct(log, parsing_data, request_data, response_data) -> [
     return []
 
 
-def handler_pchv3_state_aru(log, parsing_data, request_data, response_data) -> [bytes]:
+def handler_pchv3_state_aru(log, parsing_data, param_data) -> [bytes]:
     len_packet, code, bytes_recv = parsing_data
-    names_channels = globals().get('config_vars').get('names_channels')
-    # names_vch_tructs = globals().get('config_vars').get('names_vch_tructs')
-    code_ps = request_data
+    code_ps = param_data[0]
     if code == code_ps:
         if len_packet == 6:
+            names_channels = globals().get('config_vars').get('names_channels')
+            # names_vch_tructs = globals().get('config_vars').get('names_vch_tructs')
             id_channel = value_from_qt_bytes('quint8', bytes_recv[4:5])
             state_aru = value_from_qt_bytes('quint8', bytes_recv[-1:])
             log.info(
@@ -193,11 +194,15 @@ def handler_pchv3_state_aru(log, parsing_data, request_data, response_data) -> [
     return []
 
 
-def handler_pchv3_fapch_codes(log, parsing_data, request_data, response_data) -> [bytes]:
+def handler_pchv3_fapch_codes(log, parsing_data, param_data) -> [bytes]:
     len_packet, code, bytes_recv = parsing_data
-    names_channels = globals().get('config_vars').get('names_channels')
+    # v= response_data.get_ui_value('Состояние питания', 'Источники питания', 'Мощность', 'spinbox')
+    # response_data.set_ui_value('Состояние питания', 'Источники питания', 'Мощность', 'spinbox', 13)
+
+    request_data, response_data, control_gui = param_data
     code_req, code_resp = request_data
     if code == code_req:
+        names_channels = globals().get('config_vars').get('names_channels')
         id_channel = value_from_qt_bytes('quint8', bytes_recv[4:5])
         amount_codes = value_from_qt_bytes('quint8', bytes_recv[5:6])
         len_list = len(bytes_recv[6:])
@@ -218,10 +223,12 @@ def handler_pchv3_fapch_codes(log, parsing_data, request_data, response_data) ->
     return []
 
 
-def handler_pchv3_update_sensors(log, response_data) -> [bytes]:
+def handler_pchv3_update_sensors(log, param_data) -> [bytes]:
+    response_data, control_gui = param_data
     names_channels = globals().get('config_vars').get('names_channels')
 
     t1 = random.randrange(100, 1000) / 10
+    control_gui.set_ui_value('Состояние питания', 'Источники питания', 'Мощность', 'spinbox', t1)
     t2 = random.randrange(100, 1000) / 10
     t_top = random.randrange(0, 2)
     t_crit = random.randrange(0, 2)
@@ -265,3 +272,43 @@ def handler_pchv3_update_sensors(log, response_data) -> [bytes]:
         '+++ Команда: "Обновление сенсоров": канал = \"{}\" StateSensors = "{}"'.format(
             names_channels.get(id_channel), list_info))
     return [__qt_create_packet(code, data)]
+
+
+def handler_pchv3_set_cap(log, parsing_data, request_data, response_data) -> [bytes]:
+    len_packet, code, bytes_recv = parsing_data
+    names_channels = globals().get('config_vars').get('names_channels')
+    code_ps = request_data
+    if code == code_ps:
+        if len_packet == 7:
+            id_channel = value_from_qt_bytes('quint8', bytes_recv[4:5])
+            code_cap = value_from_qt_bytes('qint16', bytes_recv[5:7])
+            log.info(
+                '+++ Команда: "Установить код ЦАП":, код = {}, канал = \"{}\"'.format(
+                    code_cap, names_channels.get(id_channel)))
+            if code_cap == 1:
+                code_cap = -1
+            return [__qt_create_packet({'value': code_ps, 'type': 'quint16'},
+                                       [{'value': id_channel, 'type': 'quint8'},
+                                        {'value': code_cap, 'type': 'qint16'}])]
+    return []
+
+
+def gui_handler_pchv3_state_aru(log, parsing_data, request_data, response_data, get_set_value) -> [bytes]:
+    len_packet, code, bytes_recv = parsing_data
+    get_ui_value, set_ui_value = get_set_value
+    names_channels = globals().get('config_vars').get('names_channels')
+    # names_vch_tructs = globals().get('config_vars').get('names_vch_tructs')
+    code_ps = request_data
+    if code == code_ps:
+        if len_packet == 6:
+            id_channel = value_from_qt_bytes('quint8', bytes_recv[4:5])
+            state_aru = value_from_qt_bytes('quint8', bytes_recv[-1:])
+            log.info(
+                '+++ Команда: "Установить состояние АРУ тракта":, АРУ = {}, канал = \"{}\"'.format(
+                    'выкл' if state_aru == 0 else 'вкл', names_channels.get(id_channel)))
+            return [__qt_create_packet({'value': code_ps, 'type': 'quint16'},
+                                       [{'value': id_channel, 'type': 'quint8'},
+                                        {'value': state_aru, 'type': 'quint8'}])]
+            # return [bytes_recv]
+        log.error('+++ ERROR: Команда: "Установить состояние АРУ тракта": Длина пакета неверная (!= 6)')
+    return []

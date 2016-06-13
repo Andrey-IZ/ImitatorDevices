@@ -42,7 +42,7 @@ def __convert_format_qt_types(type_value_str):
     fmt_str = ''
     if isinstance(type_value_str, str):
         type_value_str = type_value_str.lower().strip()
-        if type_value_str.startswith('int', 2):
+        if type_value_str.find('int', 1, -1) != -1:
             if type_value_str.endswith('8'):
                 fmt_str = 'b'
             elif type_value_str.endswith('16'):
@@ -51,7 +51,7 @@ def __convert_format_qt_types(type_value_str):
                 fmt_str = 'i'
             elif type_value_str.endswith('64'):
                 fmt_str = 'q'
-            if type_value_str.find('u', 1, 2):
+            if type_value_str.find('u', 1, 2) != -1:
                 fmt_str = fmt_str.upper()
         elif type_value_str == 'float':
             fmt_str = 'f'

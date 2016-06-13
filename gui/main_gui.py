@@ -34,7 +34,7 @@ class MainForm(QtGui.QMainWindow):
         self.server_socket = None
         self.settings_conf = settings_conf
         self.params = params
-        self.gui_protocol = GuiProtocol(self.log,self)
+        self.gui_protocol = GuiProtocol(self.log, self)
         self.pattern_log = re.compile(
             r'(?P<date>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}) &lt;(?P<msg>[A-Z])&gt;'
             r' \[(?P<log_name>\w+)~(?P<thread_name>.*?)\]\s.*?', re.I)
@@ -53,7 +53,7 @@ class MainForm(QtGui.QMainWindow):
         if settings_conf.socket_settings.host:
             socket_logger = copy.copy(self.log)
             socket_logger.name = 'Socket'
-            self.server_socket = socket_server_start(settings_conf, socket_logger)
+            self.server_socket = socket_server_start(settings_conf, socket_logger, self.gui_protocol.get_control_form())
             btn_start, btn_stop, grpb = self.ui.pushButtonStartNet, self.ui.pushButtonStopNet, self.ui.groupBox_Net
             if self.server_socket:
                 self.__notify_launch_server('server start: "{}"'.format(self.server_socket, str(
@@ -64,7 +64,7 @@ class MainForm(QtGui.QMainWindow):
             btn_start, btn_stop, grpb = self.ui.pushButtonStart_Serial, self.ui.pushButtonStop_Serial, self.ui.groupBox_Serial
             serial_logger = copy.copy(self.log)
             serial_logger.name = 'Serial'
-            self.server_serial = serial_server_start(settings_conf, serial_logger)
+            self.server_serial = serial_server_start(settings_conf, serial_logger, self.gui_protocol.get_control_form())
             if self.server_serial:
                 self.__notify_launch_server('server start: "{}"'.format(self.server_serial, str(
                     self.server_serial.get_address())), btn_start, btn_stop, grpb, True)
@@ -105,7 +105,8 @@ class MainForm(QtGui.QMainWindow):
 
     def __init_connect_server(self, server):
         if server:
-            self.ui.spinBox_BSB.valueChanged.connect(server.slot_values_form_changed)
+            # self.ui.spinBox_BSB.valueChanged.connect(server.slot_values_form_changed)
+            pass
 
     def start_net_server(self):
         if not self.server_socket.running:
