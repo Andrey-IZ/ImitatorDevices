@@ -290,6 +290,10 @@ class HandlingProtocol(object):
             order = cmd.get(KW_ORDER, CH_ORDER_ZIP).lower()
             request = cmd.get(KW_REQUEST)
 
+            gui_dict = cmd.get('gui')
+            if gui_dict and gui_protocol:
+                gui_protocol.append(gui_dict)
+
             emit_send = cmd.get(KW_EMITSEND, '')
 
             if emit_send != '':
@@ -303,10 +307,6 @@ class HandlingProtocol(object):
             delay = cmd.get(KW_DELAY_RESPONSE)
             if not delay and self.__delay_response_default:
                 delay = self.__delay_response_default
-
-            gui_dict = cmd.get('gui')
-            if gui_dict and gui_protocol:
-                gui_protocol.append(gui_dict)
 
             if order == CH_ORDER_GENERATOR_FULL:
                 self.__list_gen_full.append((handler_response, request, response, doc, order, index, delay))

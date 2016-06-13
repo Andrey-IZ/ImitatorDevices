@@ -31,8 +31,11 @@ class ControlGuiValues(object):
             for field in fields:
                 if fields[field].get(KW_GUI_CONTROL_TYPE) == ctrl_type:
                     if ctrl_type == KW_FIELD_SPINBOX:
-                        ref = fields[field].get(KW_GUI_REF)[0]
-                        ref.setValue(value)
+                        fields[field].get(KW_GUI_REF)[0].setValue(value)
+                    if ctrl_type == KW_FIELD_CHECKBOX:
+                        fields[field].get(KW_GUI_REF)[0].setChecked(value)
+                    if ctrl_type == KW_FIELD_COMBOBOX:
+                        fields[field].get(KW_GUI_REF)[0].setCurrentIndex(value)
         except Exception as err:
             raise ValueError(
                 '!ERROR: on function get_ui_value: param= {}, {}, {}, {}; ({});'.format(
@@ -45,6 +48,10 @@ class ControlGuiValues(object):
                 if fields[field].get(KW_GUI_CONTROL_TYPE) == ctrl_type:
                     if ctrl_type == KW_FIELD_SPINBOX:
                         return fields[field].get(KW_GUI_REF)[0].value()
+                    if ctrl_type == KW_FIELD_CHECKBOX:
+                        return fields[field].get(KW_GUI_REF)[0].isChecked()
+                    if ctrl_type == KW_FIELD_COMBOBOX:
+                        return fields[field].get(KW_GUI_REF)[0].currentIndex()
         except Exception as err:
             raise ValueError(
                 '!ERROR: on function get_ui_value: param= {}, {}, {}, {}; ({});'.format(
@@ -57,7 +64,7 @@ class GuiProtocol(object):
         self.__log = logger
         self.__dict_gui_ctrl = {}
         self.__default_field_dict_spinbox = {KW_GUI_NAME: 'spinbox', KW_GUI_ROW: 0, KW_GUI_COLUMN: 0, KW_GUI_REF: None,
-                                             KW_GUI_COLSPAN: 1, KW_GUI_ROWSPAN: 1, KW_GUI_DEFAULT: 0, KW_GUI_SB_DIGIT: 2,
+                                             KW_GUI_COLSPAN: 1, KW_GUI_ROWSPAN: 1, KW_GUI_DEFAULT: 0, KW_GUI_SB_DIGIT: 0,
                                              KW_GUI_SPINBOX_MAX_VALUE: 100, KW_GUI_SPINBOX_MIN_VALUE: 0}
         self.__default_field_dict_checkbox = {KW_GUI_NAME: 'checkbox', KW_GUI_ROW: 0, KW_GUI_COLUMN: 0,
                                               KW_GUI_REF: None,
@@ -68,7 +75,7 @@ class GuiProtocol(object):
         self.__default_group_dict = {KW_GUI_NAME: 'group', KW_GUI_ROW: 0, KW_GUI_COLUMN: 0,
                                      KW_GUI_COLSPAN: 1, KW_GUI_ROWSPAN: 1, KW_FIELDS: [], KW_GUI_REF: None}
         self.__default_page_dict = {KW_GUI_NAME: 'page1', KW_GROUPS: [], KW_GUI_REF: None}
-        self._tabs = None
+        self._add_tabs('Страницы протокола')
 
     @property
     def logger(self) -> Logger:
@@ -95,7 +102,6 @@ class GuiProtocol(object):
 
     def append(self, dict_gui_property):
         # self._validate(dict_gui_property)
-        self._add_tabs('Страницы протокола')
         for page in dict_gui_property.get(KW_PAGES, []):
             dict_page = copy.copy(self.__default_page_dict)
             dict_page.update(page)
@@ -132,7 +138,6 @@ class GuiProtocol(object):
 
             _page_dict[KW_GROUPS] = dict_group
             self.__dict_gui_ctrl[dict_page.get(KW_GUI_NAME)] = _page_dict
-        self.__window.minimumSize()
 
     def _post_groupbox(self, groupbox):
         groupbox, horizontal_group, vertical_group = groupbox
@@ -156,16 +161,16 @@ class GuiProtocol(object):
 
         centralLayout.addWidget(self._tabs, 0)
 
-    def _add_page(self, dict_page) -> QtGui.QWidget:
+    def _add_page(self, dict_page) -> tuple:
         tab = QtGui.QWidget()
         vertical = QtGui.QVBoxLayout(tab)
         page_name = dict_page.get(KW_GUI_NAME)
+        tab.setObjectName(page_name)
         self._tabs.addTab(tab, page_name)
         self._tabs.setTabText(self._tabs.indexOf(tab), page_name)
 
         horizontal = QtGui.QHBoxLayout()
         vertical.addLayout(horizontal, 0)
-        self._tabs.addTab(QtGui.QWidget(), page_name)
         return tab, horizontal, vertical
 
     def _add_groupbox(self, page, dict_groupbox):
@@ -187,7 +192,7 @@ class GuiProtocol(object):
         label = QtGui.QLabel(groupbox)
         label.setText(dict_spinbox.get(KW_GUI_NAME))
 
-        horizontal_sb = QtGui.QHBoxLayout(groupbox)
+        horizontal_sb = QtGui.QHBoxLayout()
         horizontal_sb.addWidget(label)
         horizontal_sb.addWidget(spinbox)
 
@@ -201,10 +206,10 @@ class GuiProtocol(object):
         label = QtGui.QLabel(groupbox)
         label.setText(dict_checkbox.get(KW_GUI_NAME))
 
-        horizontal_cb = QtGui.QHBoxLayout(groupbox)
-        horizontal_cb.addWidget(label)
+        horizontal_cb = QtGui.QHBoxLayout()
         horizontal_cb.addWidget(checkbox)
-
+        horizontal_cb.addWidget(label)
+        print("==============")
         horizontal_group.addLayout(horizontal_cb, 0)
         return checkbox, horizontal_cb
 
@@ -217,7 +222,7 @@ class GuiProtocol(object):
         label = QtGui.QLabel(groupbox)
         label.setText(dict_combobox.get(KW_GUI_NAME))
 
-        horizontal_cb = QtGui.QHBoxLayout(groupbox)
+        horizontal_cb = QtGui.QHBoxLayout()
         horizontal_cb.addWidget(label)
         horizontal_cb.addWidget(combobox)
 
@@ -231,23 +236,6 @@ class GuiProtocol(object):
         else:
             horizontal_group.addLayout(horizontal_cb, 0)
         return combobox, horizontal_cb
-
-        # def get_ui_value(self, page, group, label):
-        # ctrl_type = self.__dict_gui_ctrl.get(page).get(group).get(KW_FIELDS).get(label).get(KW_GUI_CONTROL_TYPE)
-        # name = '{0}_{1}_{2}_{3}'.format(page, group, label, ctrl_type)
-        # if ctrl_type == KW_FIELD_SPINBOX:
-        #     spinbox = self.__window.findChild(QtGui.QDoubleSpinBox, name)
-        #     return spinbox.value()
-        # elif ctrl_type == KW_FIELD_CHECKBOX:
-        #     checkbox = self.__window.findChild(QtGui.QCheckBox, name)
-        # return checkbox.value()
-        # pass
-
-    def set_ui_value(self, page, group, label, value):
-        pass
-
-    def update_control_view(self):
-        pass
 
     def get_control_form(self) -> ControlGuiValues:
         return ControlGuiValues(self.__dict_gui_ctrl, self.__window)

@@ -227,12 +227,14 @@ def handler_pchv3_update_sensors(log, param_data) -> [bytes]:
     response_data, control_gui = param_data
     names_channels = globals().get('config_vars').get('names_channels')
 
-    t1 = random.randrange(100, 1000) / 10
-    control_gui.set_ui_value('Состояние питания', 'Источники питания', 'Мощность', 'spinbox', t1)
-    t2 = random.randrange(100, 1000) / 10
-    t_top = random.randrange(0, 2)
-    t_crit = random.randrange(0, 2)
-    t_95 = random.randrange(0, 2)
+    rand = control_gui.get_ui_value('Сенсоры', 'Обновление сенсоров', 'Random', 'checkbox')
+    # response_data.set_ui_value('Состояние питания', 'Источники питания', 'Мощность', 'spinbox', 13)
+
+    t1 = random.randrange(100, 1000) / 10 if rand else control_gui.get_ui_value('Сенсоры', 'Обновление сенсоров', 't1', 'spinbox')
+    t2 = random.randrange(100, 1000) / 10 if rand else control_gui.get_ui_value('Сенсоры', 'Обновление сенсоров', 't2', 'spinbox')
+    t_top = random.randrange(0, 2) if rand else control_gui.get_ui_value('Сенсоры', 'Обновление сенсоров', 't_top', 'checkbox')
+    t_crit = random.randrange(0, 2) if rand else control_gui.get_ui_value('Сенсоры', 'Обновление сенсоров', 't_crit', 'checkbox')
+    t_95 = random.randrange(0, 2) if rand else control_gui.get_ui_value('Сенсоры', 'Обновление сенсоров', 't_95', 'checkbox')
     p57v1 = random.randrange(0, 2)
     p57v2 = random.randrange(0, 2)
     p60v = True

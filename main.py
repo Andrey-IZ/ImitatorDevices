@@ -54,6 +54,7 @@ if __name__ == '__main__':
         try:
             start_server_cli(logger, params, settings_conf, file_conf)
         except GuiUsedException:
+            # params.interface = 'gui'
             start_server_gui(logger, params, settings_conf, file_conf)
     elif params.interface == 'gui':
         start_server_gui(logger, params, settings_conf, file_conf)

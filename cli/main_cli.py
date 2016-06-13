@@ -10,6 +10,7 @@ from ImitatorDevice.socket.ServerSocketDeviceImitator import *
 from ImitatorDevice.protocol.handling_protocol import GuiUsedException
 import copy
 
+
 def start_server_cli(logger, params, settings_conf, file_conf):
     if params.run_serial or params.run_socket:
         while True:
