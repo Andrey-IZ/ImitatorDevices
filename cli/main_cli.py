@@ -7,6 +7,7 @@ import os.path
 
 from ImitatorDevice.serial.ServerSerialDeviceImitator import *
 from ImitatorDevice.socket.ServerSocketDeviceImitator import *
+from ImitatorDevice.protocol.handling_protocol import GuiUsedException
 import copy
 
 def start_server_cli(logger, params, settings_conf, file_conf):
@@ -23,6 +24,8 @@ def start_server_cli(logger, params, settings_conf, file_conf):
                 stat = settings_conf.parse(file_conf)
                 if params.is_show_stat:
                     logger.info("Results parsing file {}:".format(file_conf) + stat)
+            except GuiUsedException:
+                raise GuiUsedException()
             except Exception as err:
                 logger.error('>>> {}'.format(err))
                 raise Exception(err) from err

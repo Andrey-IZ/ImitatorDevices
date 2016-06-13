@@ -107,7 +107,7 @@ class ServerSerialDeviceimitator(ThreadServerDeviceImitator):
             self.serial.close()
 
 
-def serial_server_start(settings_conf, logger, control_gui):
+def serial_server_start(settings_conf, logger, control_gui=None):
     is_serial_server_start = False
     serial_server = None
     try:

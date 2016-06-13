@@ -10,6 +10,7 @@ from cli.main_cli import start_server_cli
 from gui.main_gui import start_server_gui
 from gui.qt_logging import QtHandler
 from libs.log_tools.logger import Logger
+from ImitatorDevice.protocol.handling_protocol import GuiUsedException
 
 
 def init_logging(params):
@@ -50,6 +51,9 @@ if __name__ == '__main__':
     cmd = ''
     settings_conf = HandlingProtocol(logger)
     if params.interface == 'cli':
-        start_server_cli(logger, params, settings_conf, file_conf)
+        try:
+            start_server_cli(logger, params, settings_conf, file_conf)
+        except GuiUsedException:
+            start_server_gui(logger, params, settings_conf, file_conf)
     elif params.interface == 'gui':
         start_server_gui(logger, params, settings_conf, file_conf)

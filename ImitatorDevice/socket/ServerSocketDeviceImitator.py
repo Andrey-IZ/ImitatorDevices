@@ -248,7 +248,7 @@ class ServerSocketDeviceimitator(ThreadServerDeviceImitator):
                     client.send(packet)
 
 
-def socket_server_start(settings_conf, logger, control_gui):
+def socket_server_start(settings_conf, logger, control_gui=None):
     is_socket_server_start = False
     socket_server = None
     try:

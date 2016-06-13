@@ -16,6 +16,10 @@ CHLIST_ORDER = (CH_ORDER_GENERATOR, CH_ORDER_ZIP, CH_ORDER_SEMIDUPLEX, CH_ORDER_
 CHLIST_TRIGGER = (CH_ESTRIGGER_CON, CH_ESTRIGGER_TIMEOUT)
 
 
+class GuiUsedException(Exception):
+    pass
+
+
 class HandlingProtocol(object):
     """
     It implements  parsing and algorithmic handling loaded protocol configuration
@@ -268,6 +272,8 @@ class HandlingProtocol(object):
             gui_dict = cmd.get('gui')
             if gui_dict and gui_protocol:
                 gui_protocol.append(gui_dict)
+            elif not gui_protocol and not gui_dict:
+                raise GuiUsedException("")
 
         for index, cmd in enumerate(conf[1:]):
             cmd = str_dict_keys_lower(cmd)
