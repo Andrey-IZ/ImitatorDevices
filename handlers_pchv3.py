@@ -196,8 +196,6 @@ def handler_pchv3_state_aru(log, parsing_data, param_data) -> [bytes]:
 
 def handler_pchv3_fapch_codes(log, parsing_data, param_data) -> [bytes]:
     len_packet, code, bytes_recv = parsing_data
-    # v= response_data.get_ui_value('Состояние питания', 'Источники питания', 'Мощность', 'spinbox')
-    # response_data.set_ui_value('Состояние питания', 'Источники питания', 'Мощность', 'spinbox', 13)
 
     request_data, response_data, control_gui = param_data
     code_req, code_resp = request_data
@@ -227,14 +225,11 @@ def handler_pchv3_update_sensors(log, param_data) -> [bytes]:
     response_data, control_gui = param_data
     names_channels = globals().get('config_vars').get('names_channels')
 
-    rand = control_gui.get_ui_value('Сенсоры', 'Обновление сенсоров', 'Random', 'checkbox')
-    # response_data.set_ui_value('Состояние питания', 'Источники питания', 'Мощность', 'spinbox', 13)
-
-    t1 = random.randrange(100, 1000) / 10 if rand else control_gui.get_ui_value('Сенсоры', 'Обновление сенсоров', 't1', 'spinbox')
-    t2 = random.randrange(100, 1000) / 10 if rand else control_gui.get_ui_value('Сенсоры', 'Обновление сенсоров', 't2', 'spinbox')
-    t_top = random.randrange(0, 2) if rand else control_gui.get_ui_value('Сенсоры', 'Обновление сенсоров', 't_top', 'checkbox')
-    t_crit = random.randrange(0, 2) if rand else control_gui.get_ui_value('Сенсоры', 'Обновление сенсоров', 't_crit', 'checkbox')
-    t_95 = random.randrange(0, 2) if rand else control_gui.get_ui_value('Сенсоры', 'Обновление сенсоров', 't_95', 'checkbox')
+    t1 = random.randrange(100, 1000) / 10
+    t2 = random.randrange(100, 1000) / 10
+    t_top = random.randrange(0, 2)
+    t_crit = random.randrange(0, 2)
+    t_95 = random.randrange(0, 2)
     p57v1 = random.randrange(0, 2)
     p57v2 = random.randrange(0, 2)
     p60v = True

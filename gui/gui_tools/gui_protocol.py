@@ -42,6 +42,7 @@ class ControlGuiValues(object):
                     fields[field], page, group, name, ctrl_type)) from err
 
     def get_ui_value(self, page, group, name, ctrl_type):
+        fields = {}
         try:
             fields = self.__dict_gui_ctrl.get(page).get(KW_GROUPS).get(group).get(KW_FIELDS)
             for field in fields:
