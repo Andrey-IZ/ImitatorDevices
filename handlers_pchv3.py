@@ -63,7 +63,7 @@ def handler_pchv3_unversal(log, response_data) -> [bytes]:
 
 def handler_pchv3_power_changer(log, parsing_data, param_data) -> [bytes]:
     len_packet, code, bytes_recv = parsing_data
-    code_ps_all, code_ps, control_gui = param_data
+    code_ps, code_ps_all, control_gui = param_data
     if code == code_ps:
         pchv3_power_source = globals().get('config_vars').get('pchv3_power_source')
         names_power_sources = globals().get('config_vars').get('names_power_sources')
@@ -78,7 +78,7 @@ def handler_pchv3_power_changer(log, parsing_data, param_data) -> [bytes]:
 
 def handler_pchv3_all_power_changer(log, parsing_data, param_data) -> [bytes]:
     len_packet, code, bytes_recv = parsing_data
-    code_ps_all, code_ps, control_gui = param_data
+    code_ps, code_ps_all, control_gui = param_data
     if code_ps_all == code:
         pchv3_power_source = globals().get('config_vars').get('pchv3_power_source')
         value = value_from_qt_bytes('quint8', bytes_recv[4:5])
@@ -276,8 +276,9 @@ def handler_pchv3_update_sensors(log, param_data) -> [bytes]:
     return [__qt_create_packet(code, data)]
 
 
-def handler_pchv3_set_cap(log, parsing_data, request_data, response_data) -> [bytes]:
+def handler_pchv3_set_cap(log, parsing_data, param_data) -> [bytes]:
     len_packet, code, bytes_recv = parsing_data
+    request_data, response_data, control_gui = param_data
     names_channels = globals().get('config_vars').get('names_channels')
     code_ps = request_data
     if code == code_ps:
@@ -295,9 +296,9 @@ def handler_pchv3_set_cap(log, parsing_data, request_data, response_data) -> [by
     return []
 
 
-def gui_handler_pchv3_state_aru(log, parsing_data, request_data, response_data, get_set_value) -> [bytes]:
+def gui_handler_pchv3_state_aru(log, parsing_data, param_data) -> [bytes]:
     len_packet, code, bytes_recv = parsing_data
-    get_ui_value, set_ui_value = get_set_value
+    request_data, response_data, control_gui = param_data
     names_channels = globals().get('config_vars').get('names_channels')
     # names_vch_tructs = globals().get('config_vars').get('names_vch_tructs')
     code_ps = request_data

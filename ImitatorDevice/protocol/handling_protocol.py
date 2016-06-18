@@ -242,7 +242,7 @@ class HandlingProtocol(object):
                             list_index.append(index)
                             is_delay = True
                     if is_delay:
-                        self.__delay_response(delay)
+                        self.__delay_response(logger, delay)
                 else:
                     raise ValueError('!ERROR: Don\'t found keyword "{}": {}.'.format(
                         KW_HANDLER_RESPONSE, handler_dict_response))
@@ -558,12 +558,12 @@ class HandlingProtocol(object):
             value += 1
         return value
 
-    def __delay_response(self, delay):
+    def __delay_response(self, log, delay):
         if not delay or not isinstance(delay, (int, float)) or delay <= 0:
             if not isinstance(self.__delay_response_default, (int, float)) or self.__delay_response_default <= 0:
                 return
             delay = self.__delay_response_default
-        self._log.warning('waiting timeout {} seconds ... '.format(delay))
+        log.warning('waiting timeout {} seconds ... '.format(delay))
         time.sleep(delay)
 
     def handler_response(self, logger, bytes_recv, control_gui=None) -> [bytes]:
@@ -595,21 +595,21 @@ class HandlingProtocol(object):
                 result = self.__process_generation_reponse((list_generator_resp, response, list_req, bytes_recv),
                                                            (doc, order))
                 if result:
-                    self.__delay_response(delay)
+                    self.__delay_response(logger, delay)
                     return result
             elif order == "zip" and self.__count_req_zip_packet >= 0 and \
                             self.__count_req_generator_packet == 0 and self.__count_req_semiduplex_packet == 0:
                 list_resp = cmd[2]
                 result = self.__process_zip_response((list_resp, list_req, bytes_recv), (doc, order))
                 if result:
-                    self.__delay_response(delay)
+                    self.__delay_response(logger, delay)
                     return result
             elif order == "semiduplex" and self.__count_req_semiduplex_packet >= 0 and \
                             self.__count_req_generator_packet == 0 and self.__count_req_zip_packet == 0:
                 list_resp = cmd[2]
                 result = self.__process_semiduplex_response((list_resp, list_req, bytes_recv), (doc, order))
                 if result is not None:
-                    self.__delay_response(delay)
+                    self.__delay_response(logger, delay)
                     return result
 
             if self.__count_protocol == self.__len_list_protocol - 1:
