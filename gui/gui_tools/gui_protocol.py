@@ -204,13 +204,10 @@ class GuiProtocol(object):
         groupbox, horizontal_group, vertical_group = groupbox
         checkbox = QtGui.QCheckBox(groupbox)
         checkbox.setChecked(dict_checkbox.get(KW_GUI_DEFAULT))
-        label = QtGui.QLabel(groupbox)
-        label.setText(dict_checkbox.get(KW_GUI_NAME))
+        checkbox.setText(dict_checkbox.get(KW_GUI_NAME))
 
         horizontal_cb = QtGui.QHBoxLayout()
         horizontal_cb.addWidget(checkbox)
-        horizontal_cb.addWidget(label)
-        print("==============")
         horizontal_group.addLayout(horizontal_cb, 0)
         return checkbox, horizontal_cb
 
