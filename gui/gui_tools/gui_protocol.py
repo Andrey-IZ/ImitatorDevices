@@ -46,7 +46,7 @@ class ControlGuiValues(object):
         try:
             fields = self.__dict_gui_ctrl.get(page).get(KW_GROUPS).get(group).get(KW_FIELDS)
             for field in fields:
-                if fields[field].get(KW_GUI_CONTROL_TYPE) == ctrl_type:
+                if fields[field].get(KW_GUI_CONTROL_TYPE) == ctrl_type and name == field:
                     if ctrl_type == KW_FIELD_SPINBOX:
                         return fields[field].get(KW_GUI_REF)[0].value()
                     if ctrl_type == KW_FIELD_CHECKBOX:

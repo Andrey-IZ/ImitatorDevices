@@ -78,7 +78,7 @@ def handler_pchv3_power_changer(log, parsing_data, param_data) -> [bytes]:
 
 def handler_pchv3_all_power_changer(log, parsing_data, param_data) -> [bytes]:
     len_packet, code, bytes_recv = parsing_data
-    code_ps, code_ps_all, control_gui = param_data
+    code_ps_all, code_ps,control_gui = param_data
     if code_ps_all == code:
         pchv3_power_source = globals().get('config_vars').get('pchv3_power_source')
         value = value_from_qt_bytes('quint8', bytes_recv[4:5])
@@ -226,28 +226,29 @@ def handler_pchv3_fapch_codes(log, parsing_data, param_data) -> [bytes]:
 def handler_pchv3_update_sensors(log, param_data) -> [bytes]:
     response_data, control_gui = param_data
     names_channels = globals().get('config_vars').get('names_channels')
+    p, g = 'Сенсоры', 'Обновление сенсоров'
 
     rand = control_gui.get_ui_value('Сенсоры', 'Обновление сенсоров', 'Random', 'checkbox')
     # response_data.set_ui_value('Состояние питания', 'Источники питания', 'Мощность', 'spinbox', 13)
 
-    t1 = random.randrange(100, 1000) / 10 if rand else control_gui.get_ui_value('Сенсоры', 'Обновление сенсоров', 't1', 'spinbox')
-    t2 = random.randrange(100, 1000) / 10 if rand else control_gui.get_ui_value('Сенсоры', 'Обновление сенсоров', 't2', 'spinbox')
-    t_top = random.randrange(0, 2) if rand else control_gui.get_ui_value('Сенсоры', 'Обновление сенсоров', 't_top', 'checkbox')
-    t_crit = random.randrange(0, 2) if rand else control_gui.get_ui_value('Сенсоры', 'Обновление сенсоров', 't_crit', 'checkbox')
-    t_95 = random.randrange(0, 2) if rand else control_gui.get_ui_value('Сенсоры', 'Обновление сенсоров', 't_95', 'checkbox')
-    p57v1 = random.randrange(0, 2)
-    p57v2 = random.randrange(0, 2)
-    p60v = True
-    p75v = False
-    clk = random.randrange(0, 1)
+    t1 = random.randrange(100, 1000) / 10 if rand else control_gui.get_ui_value(p, g, 't1', 'spinbox')
+    t2 = random.randrange(100, 1000) / 10 if rand else control_gui.get_ui_value(p, g, 't2', 'spinbox')
+    t_top = random.randrange(0, 2) if rand else control_gui.get_ui_value(p, g, 't_top', 'checkbox')
+    t_crit = random.randrange(0, 2) if rand else control_gui.get_ui_value(p, g, 't_crit', 'checkbox')
+    t_95 = random.randrange(0, 2) if rand else control_gui.get_ui_value(p, g, 't_95', 'checkbox')
+    p57v1 = random.randrange(0, 2) if rand else control_gui.get_ui_value(p, g, 'p57v1', 'checkbox')
+    p57v2 = random.randrange(0, 2) if rand else control_gui.get_ui_value(p, g, 'p57v1', 'checkbox')
+    p60v = random.randrange(0, 2) if rand else control_gui.get_ui_value(p, g, 'p60v', 'checkbox')
+    p75v = random.randrange(0, 2) if rand else control_gui.get_ui_value(p, g, 'p75v', 'checkbox')
+    clk = random.randrange(0, 2) if rand else control_gui.get_ui_value(p, g, 'clk', 'checkbox')
     count_channel = len(names_channels)
     list_info =[]
     list_sensors = [{'value': count_channel, 'type': 'quint8'}]
 
     for id_channel in range(len(names_channels)):
-        fapch_syn = random.randrange(0, 2)
-        fapch_jit = random.randrange(0, 2)
-        acp = random.randrange(10, 500) / 10
+        fapch_syn = random.randrange(0, 2) if rand else control_gui.get_ui_value(p, g, 'fapch_syn', 'checkbox')
+        fapch_jit = random.randrange(0, 2) if rand else control_gui.get_ui_value(p, g, 'fapch_jit', 'checkbox')
+        acp = random.randrange(10, 500) / 10 if rand else control_gui.get_ui_value(p, g, 'acp', 'spinbox')
         list_info.extend([{'fapch_syn':fapch_syn, 'fapch_jit':fapch_jit, 'acp': acp}])
 
         list_sensors.append({'value': fapch_syn, 'type': 'bool'})
@@ -315,3 +316,16 @@ def gui_handler_pchv3_state_aru(log, parsing_data, param_data) -> [bytes]:
             # return [bytes_recv]
         log.error('+++ ERROR: Команда: "Установить состояние АРУ тракта": Длина пакета неверная (!= 6)')
     return []
+
+
+def handler_pchv3_emit_attenuators(log, response_data) -> [bytes]:
+    code_ps, dict_attenuators = response_data
+    packets = []
+    for id_channel, (at1, at2) in dict_attenuators.items():
+        packets.append(__qt_create_packet({'value': code_ps, 'type': 'quint16'},
+                                             [{'value': id_channel-1, 'type': 'quint8'},
+                                                {'value': at1, 'type': 'float'},
+                                                {'value': at2, 'type': 'quint8'}]
+                                         )
+                      )
+    return packets
