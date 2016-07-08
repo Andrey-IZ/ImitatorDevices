@@ -62,11 +62,9 @@ def __import_function(file_name, function_name, config_vars):
         if path_dir not in sys.path:
             sys.path.append(path_dir)
         try:
-            module_vars = globals().copy()
-            module_vars.update(config_vars)
             exec(compile(open(path_file, "rb").read(), path_file, 'exec'))
             globals().update(locals())
-            func = globals().get(function_name)
+            func = locals().get(function_name)
             if not func:
                 raise ImportError()
             return func

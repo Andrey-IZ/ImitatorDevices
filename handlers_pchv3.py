@@ -5,7 +5,7 @@ import struct
 import random
 
 
-def handler_parser_pchv3(bytes_recv):
+def handler_parser_pchv3(log, bytes_recv):
     if len(bytes_recv) > 4:
         len_packet, code = struct.unpack('!2H', bytes_recv[:4])
         return len_packet + 2, code, bytes_recv

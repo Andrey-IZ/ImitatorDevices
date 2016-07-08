@@ -5,7 +5,7 @@ import struct
 import random
 
 
-def handler_parser_pchv3(bytes_recv):
+def handler_parser_pchv3(log, bytes_recv):
     if len(bytes_recv) > 4:
         len_packet, code = struct.unpack('!2H', bytes_recv[:4])
         return len_packet + 2, code, bytes_recv
@@ -329,3 +329,21 @@ def handler_pchv3_emit_attenuators(log, response_data) -> [bytes]:
                                          )
                       )
     return packets
+
+
+def handler_pchv3_set_control_cap(log, parsing_data, param_data) -> [bytes]:
+    len_packet, code, bytes_recv = parsing_data
+    request_data, response_data, control_gui = param_data
+    code_req, code_resp = request_data
+    if code == code_req:
+ 
+        command = value_from_qt_bytes('quint8', bytes_recv[4:5])
+        address = value_from_qt_bytes('quint8', bytes_recv[5:6])
+        data = value_from_qt_bytes('quint16', bytes_recv[6:8])
+
+        log.info(
+            '+++ Команда: "Установить управление ЦАП": Команда = {}, Адрес = {}, Данные = {}'.format(
+                command, address, data))
+        return [bytes.fromhex(response_data)]
+    return []
+

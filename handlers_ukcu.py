@@ -2,8 +2,11 @@
 
 import struct
 
+UKCU_SET_SIGNALS, UKCU_GET_SIGNALS, UKCU_SET_DIRECTION = 'SetSignals', 'GetSignals', 'SetDirection'
 
-commands = dict(SetDirection=0x01B, SetSignals=0x11B, GetSignals=0x21B)
+UKCU_COMMANDS = {UKCU_SET_DIRECTION: 0x01B, UKCU_SET_SIGNALS: 0x11B, UKCU_GET_SIGNALS: 0x21B}
+UKCU_READ_LOW_ADDRESS, UKCU_READ_HIGH_ADDRESS = 0x1000004, 0x1000006
+UKCU_R_MASK = 0xFF00
 
 
 class UkcuPacket(object):
@@ -78,7 +81,7 @@ def handler_ukcu_response(request_data, response_data=None):
     :param request_data: It is tuple. First item is bytes sending to serial device. Second item is timeout in ms for delay
     response. The rest is user arguments
     :param derived_bytes: array of bytes, which derived from PC to serial device and match with protocol record
-    :return:  array's bytes for will send to PC again
+    :return:  array's bytes to will send to PC again
     """
     packet = UkcuPacket()
     derived_bytes = request_data[0]
@@ -92,85 +95,165 @@ def handler_ukcu_response(request_data, response_data=None):
     return packet.to_bytes()
 
 
-def handler_request_read_low():
+def __handler_request_read_low(log):
     list_data = list()
-    list_data.append(__send_command(commands.get('SetSignals'), 0x01000004))
-    list_data.append(__send_command(commands.get('GetSignals'), 0x0000FF00))
+    list_data.append(__send_command(UKCU_COMMANDS.get(UKCU_SET_SIGNALS), 0x01000004))
+    list_data.append(__send_command(UKCU_COMMANDS.get(UKCU_GET_SIGNALS), 0x0000FF00))
     return list_data
 
 
-def handler_request_read_high():
+def __handler_request_read_high(log):
     list_data = list()
-    list_data.append(__send_command(commands.get('SetSignals'), 0x01000006))
-    list_data.append(__send_command(commands.get('GetSignals'), 0x0000FF00))
+    list_data.append(__send_command(UKCU_COMMANDS.get(UKCU_SET_SIGNALS), 0x01000006))
+    list_data.append(__send_command(UKCU_COMMANDS.get(UKCU_GET_SIGNALS), 0x0000FF00))
     return list_data
 
 
-def handler_request_write(request_data):
+def handler_parser_ucku(log, bytes_recv):
+    packet = UkcuPacket()
+    if packet.parse(bytes_recv):
+        ukcu_clear_shell_packets = globals().get('config_vars').get('ukcu_clear_shell_packets')
+        ukcu_shell_packets = globals().get('config_vars').get('ukcu_shell_packets')
+        ukcu_code_patch = globals().get('config_vars').get('ukcu_code_patch')
+        if ukcu_clear_shell_packets[0]:
+            ukcu_shell_packets.clear()
+            ukcu_code_patch[1] = True
+            ukcu_code_patch[0] = ukcu_code_patch[2]
+            ukcu_clear_shell_packets[0] = False
+            log.info('list cleared = {}'.format(ukcu_shell_packets))
+        ukcu_shell_packets.append(packet.data)
+        return packet.code, packet.data
+    return None
+
+
+def __extract_packet_recv(ukcu_shell_packets):
+    if len(ukcu_shell_packets) == 8:
+        d11 = ukcu_shell_packets[0] - 0x01000004 >> 8
+        d21 = (ukcu_shell_packets[2] - 0x01000000) >> 8
+        d31 = ukcu_shell_packets[4] - 0x01000006 >> 8
+        d41 = ukcu_shell_packets[6] - 0x01000002 >> 8
+        n = d31 << 12 | d11 << 4 | d41 << 8 | d21
+        return n
+    return None
+
+
+def handler_ukcu_generator_rw(log, parsing_data, param_data) -> list:
     """
-    Operates packet commands from PC to serial port device
-    :param request_data:
-    :return:
+    :return: UkcuPacket
     """
-    list_data = [__send_command(commands.get('SetSignals'), 0x01000004 | (request_data & 0x00F0) << 4),
-                 __send_command(commands.get('SetSignals'), 0x01000000 | (request_data & 0x00F0) << 4),
-                 __send_command(commands.get('SetSignals'), 0x01000000 | (request_data & 0x000F) << 8),
-                 __send_command(commands.get('SetSignals'), 0x01000004 | (request_data & 0x000F) << 8),
-                 __send_command(commands.get('SetSignals'), 0x01000006 | (request_data & 0xF000) >> 4),
-                 __send_command(commands.get('SetSignals'), 0x01000002 | (request_data & 0xF000) >> 4),
-                 __send_command(commands.get('SetSignals'), 0x01000002 | (request_data & 0x0F00)),
-                 __send_command(commands.get('SetSignals'), 0x01000006 | (request_data & 0x0F00))]
-    return list_data
+    code, packet_data = parsing_data
+    request_data, response_data, control_gui = param_data
+
+    if isinstance(request_data, list) and len(request_data):
+        ukcu_shell_packets = globals().get('config_vars').get('ukcu_shell_packets')
+        ukcu_code_patch = globals().get('config_vars').get('ukcu_code_patch')
+        ukcu_clear_shell_packets = globals().get('config_vars').get('ukcu_clear_shell_packets')
+
+        if ukcu_code_patch[1] or request_data[0] == ukcu_code_patch[0]:
+            ukcu_code_patch[0] = request_data[0]
+            ukcu_code_patch[1] = False
+            log.debug('ukcu_code_patch after={}'.format(hex(ukcu_code_patch[0])))
+            ukcu_answer_code_data = globals().get('config_vars').get('ukcu_answer_code_data')
+            answer_code, answer_data = ukcu_answer_code_data
+
+            len_packets = len(ukcu_shell_packets)
+            log.debug('list append = {}'.format(list(map(hex, ukcu_shell_packets))))
+
+            if len_packets <= 8:
+                if code == UKCU_COMMANDS.get(UKCU_SET_SIGNALS):
+                    log.info('+++ Обработана команда {} из {}'.format(len_packets, 8))
+                    if len(ukcu_shell_packets) == 8:
+                        ukcu_code_patch[2] = __extract_packet_recv(ukcu_shell_packets)
+                        if ukcu_code_patch[2] == ukcu_code_patch[0]:
+                            log.info('\n ++++++++++++++ Распознана команда: 0x{} ("{}")\n'.format(
+                                hex(ukcu_code_patch[2])[2:].upper(), request_data[1]))
+                        if response_data is None:
+                            ukcu_clear_shell_packets[0] = True
+                    return [UkcuPacket(answer_code, answer_data).to_bytes()]
+            elif code == UKCU_COMMANDS.get(UKCU_SET_SIGNALS) and len_packets in (9, 11):
+                data_hex = hex(packet_data)[2:].upper()
+                if packet_data == UKCU_READ_LOW_ADDRESS:
+                    log.info('* Request read from Low address: 0x{}'.format(data_hex))
+                elif packet_data == UKCU_READ_HIGH_ADDRESS:
+                    log.info('* Request read from High address: 0x{}'.format(data_hex))
+                return [UkcuPacket(answer_code, answer_data).to_bytes()]
+            elif code == UKCU_COMMANDS.get(UKCU_GET_SIGNALS) and len_packets in (10, 12) and packet_data == UKCU_R_MASK:
+                if isinstance(response_data, list) and len(response_data) == 2:
+                    if ukcu_shell_packets[-2] == UKCU_READ_LOW_ADDRESS:
+                        data = response_data[0]
+                    elif ukcu_shell_packets[-2] == UKCU_READ_HIGH_ADDRESS:
+                        data = response_data[1]
+                    if len_packets == 12:
+                        ukcu_clear_shell_packets[0] = True
+                else:
+                    data = answer_data if response_data is None else response_data
+                    ukcu_clear_shell_packets[0] = True
+
+                data_hex = hex(data)[2:].upper()
+                if ukcu_shell_packets[-2] == UKCU_READ_LOW_ADDRESS:
+                    log.info('* Response read data in Low address: 0x{}'.format(data_hex))
+                elif ukcu_shell_packets[-2] == UKCU_READ_HIGH_ADDRESS:
+                    log.info('* Response read data in High address: 0x{}'.format(data_hex))
+
+                ukcu_answer_resp_code = globals().get('config_vars').get('ukcu_answer_resp_code')
+                return [UkcuPacket(ukcu_answer_resp_code, data << 8).to_bytes()]
+        elif len(ukcu_shell_packets) == 8 and request_data[0] == ukcu_code_patch[2]:
+            log.info('\n ++++++++++++++ Распознана команда: 0x{} ("{}")\n'.format(hex(ukcu_code_patch[2])[2:].upper(),
+                                                                                  request_data[1]))
+            if response_data is None:
+                ukcu_clear_shell_packets[0] = True
 
 
-def handler_request_write_read_low(request_data):
+def handler_request_write_read_low(log, parsing_data, param_data):
+    bytes_recv = parsing_data
+    request_data, response_data, control_gui = param_data
     list_data = list()
-    list_data.append(handler_request_write(request_data))
-    list_data.append(handler_request_read_low())
+    list_data.extend(handler_ukcu_generator_rw(log, parsing_data, param_data))
+    list_data.extend(__handler_request_read_low(log))
     return list_data
 
 
-def handler_request_setup_ukcu():
+def handler_request_setup_ukcu(log):
     list_data = list()
-    list_data.append(__send_command(commands.get('SetDirection'), 0x0100FF07))
-    list_data.append(__send_command(commands.get('SetDirection'), 0x0))
+    list_data.append(__send_command(UKCU_COMMANDS.get('SetDirection'), 0x0100FF07))
+    list_data.append(__send_command(UKCU_COMMANDS.get('SetDirection'), 0x0))
     return list_data
 
 
-def handler_request_test_ukcu():
+def handler_request_test_ukcu(log):
     p = [0xFE, 0xFD, 0xFB, 0xF7, 0xEF, 0xDF, 0xBF, 0x7F, 0xFF]
     list_data = list()
     for i in p:
-        list_data.append(__send_command(commands.get('SetSignals'), 0x01000004 | ((i & 0xF0) << 4)))
-        list_data.append(__send_command(commands.get('SetSignals'), 0x01000000 | ((i & 0xF0) << 4)))
-        list_data.append(__send_command(commands.get('SetSignals'), 0x01000000 | ((i & 0x0F) << 8)))
-        list_data.append(__send_command(commands.get('SetSignals'), 0x01000004 | ((i & 0x0F) << 8)))
-        list_data.append(__send_command(commands.get('SetSignals'), 0x01000A06))
-        list_data.append(__send_command(commands.get('SetSignals'), 0x01000A02))
-        list_data.append(__send_command(commands.get('SetSignals'), 0x01000402))
-        list_data.append(__send_command(commands.get('SetSignals'), 0x01000406))
-        list_data.append(__send_command(commands.get('SetSignals'), 0x01000004))
-        list_data.append(__send_command(commands.get('GetSignals'), 0x0000FF00, expected_data=(i << 8)))
+        list_data.append(__send_command(UKCU_COMMANDS.get(UKCU_SET_SIGNALS), 0x01000004 | ((i & 0xF0) << 4)))
+        list_data.append(__send_command(UKCU_COMMANDS.get(UKCU_SET_SIGNALS), 0x01000000 | ((i & 0xF0) << 4)))
+        list_data.append(__send_command(UKCU_COMMANDS.get(UKCU_SET_SIGNALS), 0x01000000 | ((i & 0x0F) << 8)))
+        list_data.append(__send_command(UKCU_COMMANDS.get(UKCU_SET_SIGNALS), 0x01000004 | ((i & 0x0F) << 8)))
+        list_data.append(__send_command(UKCU_COMMANDS.get(UKCU_SET_SIGNALS), 0x01000A06))
+        list_data.append(__send_command(UKCU_COMMANDS.get(UKCU_SET_SIGNALS), 0x01000A02))
+        list_data.append(__send_command(UKCU_COMMANDS.get(UKCU_SET_SIGNALS), 0x01000402))
+        list_data.append(__send_command(UKCU_COMMANDS.get(UKCU_SET_SIGNALS), 0x01000406))
+        list_data.append(__send_command(UKCU_COMMANDS.get(UKCU_SET_SIGNALS), 0x01000004))
+        list_data.append(__send_command(UKCU_COMMANDS.get(UKCU_GET_SIGNALS), 0x0000FF00, expected_data=(i << 8)))
     return list_data
 
 
-def handler_request_reset_ukcu():
+def handler_request_reset_ukcu(log):
     list_data = list()
-    list_data.append(__send_command(commands.get('SetSignals'), 0x01000A04))
-    list_data.append(__send_command(commands.get('SetSignals'), 0x01000A00))
-    list_data.append(__send_command(commands.get('SetSignals'), 0x01000500))
-    list_data.append(__send_command(commands.get('SetSignals'), 0x01000504))
-    list_data.append(__send_command(commands.get('SetSignals'), 0x01000506))
-    list_data.append(__send_command(commands.get('SetSignals'), 0x01000502))
-    list_data.append(__send_command(commands.get('SetSignals'), 0x01000A02))
-    list_data.append(__send_command(commands.get('SetSignals'), 0x01000A06))
+    list_data.append(__send_command(UKCU_COMMANDS.get(UKCU_SET_SIGNALS), 0x01000A04))
+    list_data.append(__send_command(UKCU_COMMANDS.get(UKCU_SET_SIGNALS), 0x01000A00))
+    list_data.append(__send_command(UKCU_COMMANDS.get(UKCU_SET_SIGNALS), 0x01000500))
+    list_data.append(__send_command(UKCU_COMMANDS.get(UKCU_SET_SIGNALS), 0x01000504))
+    list_data.append(__send_command(UKCU_COMMANDS.get(UKCU_SET_SIGNALS), 0x01000506))
+    list_data.append(__send_command(UKCU_COMMANDS.get(UKCU_SET_SIGNALS), 0x01000502))
+    list_data.append(__send_command(UKCU_COMMANDS.get(UKCU_SET_SIGNALS), 0x01000A02))
+    list_data.append(__send_command(UKCU_COMMANDS.get(UKCU_SET_SIGNALS), 0x01000A06))
     return list_data
 
 
 if __name__ == '__main__':
-    print(handler_request_write(0xA600))
-    print(handler_request_read_low())
-    print(handler_request_read_high())
+    print(handler_gen_request_write(0xA600))
+    print(__handler_request_read_low())
+    print(__handler_request_read_high())
     print(handler_request_reset_ukcu())
     print(handler_request_setup_ukcu())
     print(handler_request_test_ukcu())

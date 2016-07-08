@@ -34,7 +34,6 @@ class MainForm(QtGui.QMainWindow):
         self.server_socket = None
         self.settings_conf = settings_conf
         self.params = params
-        self.gui_protocol = GuiProtocol(self.log, self)
         self.pattern_log = re.compile(
             r'(?P<date>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}) &lt;(?P<msg>[A-Z])&gt;'
             r' \[(?P<log_name>\w+)~(?P<thread_name>.*?)\]\s.*?', re.I)
@@ -44,9 +43,7 @@ class MainForm(QtGui.QMainWindow):
         # XStream.stderr().messageWritten.connect(self.add_log_err)
         XStream.stdout().messageWritten.connect(self.add_log)
 
-        self.__parse_config()
-        self.__init_gui_form()
-        self.__init_servers(settings_conf)
+        self.__reload_config()
         self.__init_connect()
 
     def __init_servers(self, settings_conf):
@@ -90,6 +87,7 @@ class MainForm(QtGui.QMainWindow):
                                      self.ui.comboBox_DataBits, self.ui.comboBox_StopBits, self.ui.comboBox_Parity)
 
     def __init_connect(self):
+        self.ui.pushButtonReloadConfig.clicked.connect(self.__reload_config)
         self.ui.pushButtonStartNet.clicked.connect(self.start_net_server)
         self.ui.pushButtonStart_Serial.clicked.connect(self.start_serial_server)
 
@@ -102,6 +100,14 @@ class MainForm(QtGui.QMainWindow):
 
         self.__init_connect_server(self.server_socket)
         self.__init_connect_server(self.server_serial)
+
+    def __reload_config(self):
+        if hasattr(self, 'gui_protocol'):
+            del self.gui_protocol
+        self.gui_protocol = GuiProtocol(self.log, self)
+        self.__parse_config()
+        self.__init_gui_form()
+        self.__init_servers(self.settings_conf)
 
     def __init_connect_server(self, server):
         if server:
