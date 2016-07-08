@@ -2,6 +2,7 @@
 # -*- coding=utf-8 -*-
 
 import serial
+import time
 from ImitatorDevice.server_device_imitator import ThreadServerDeviceImitator
 from tools_binary import byte2hex_str
 
@@ -25,6 +26,7 @@ class ServerSerialDeviceimitator(ThreadServerDeviceImitator):
         self.handler_response = settings_conf.handler_response
         self.serial_settings = settings_conf.serialport_settings
         self.__init_serial(self.serial_settings)
+        self.bytes_recv = bytearray()
 
     def __init_serial(self, port_settings):
         if self.serial_settings.port == '':
@@ -77,20 +79,25 @@ class ServerSerialDeviceimitator(ThreadServerDeviceImitator):
         """loop forever and handling packets protocol"""
         try:
             while self.running:
-                data_recv = self.serial.read(self.serial.inWaiting())
-                if data_recv:
+                while self.serial.inWaiting():
+                    self.bytes_recv.extend(self.serial.read(self.serial.inWaiting()))
+                    time.sleep(0.004)
+
+                if self.bytes_recv:
                     self.log.warning("======================================")
-                    self.log.warning("-> recv: {}".format((byte2hex_str(data_recv))))
+                    self.log.warning("-> recv: {}".format((byte2hex_str(self.bytes_recv))))
 
                     if self.dict_values_form:
-                        list_packets = self.handler_response(self.log, data_recv, self.dict_values_form)
+                        list_packets = self.handler_response(self.log, self.bytes_recv, self.dict_values_form)
                     else:
-                        list_packets = self.handler_response(self.log, data_recv)
+                        list_packets = self.handler_response(self.log, self.bytes_recv)
                     if list_packets:
                         for packet in list_packets:
                             if packet:
                                 self.log.warning("<- send: {}".format(byte2hex_str(packet)))
                                 self.serial.write(packet)
+                    self.bytes_recv.clear()
+
         except serial.SerialException as err:
             exc_str = "!ERROR: Occurrence for read/write to serial port"
             self.log.error(exc_str)
