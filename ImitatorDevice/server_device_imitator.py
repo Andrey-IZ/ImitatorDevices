@@ -19,15 +19,15 @@ class WorkerThread(QtCore.QThread):
     def run(self):
         self.running = True
         self.log.qthread_name = self.thread_name
-        self.log.warning('Thread {} start'.format(self.thread_name))
+        self.log.system('Thread {} start'.format(self.thread_name))
         self.sig_status_thread.emit(True)
         success = self._do_work()
         self.sig_job_finished.emit(bool(success))
-        self.log.warning('{} thread terminated'.format(self.thread_name))
+        self.log.system('{} thread terminated'.format(self.thread_name))
 
     def stop(self):
         self.running = False
-        self.log.warning('Thread {} stop (WorkerThread)'.format(self.thread_name))
+        self.log.system('Thread {} stop (WorkerThread)'.format(self.thread_name))
 
     @property
     def status(self):
