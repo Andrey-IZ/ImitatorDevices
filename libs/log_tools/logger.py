@@ -62,3 +62,6 @@ class Logger(logging.Logger):
     def critical(self, msg, *args, **kwargs):
         self._init_extra(kwargs)
         super(Logger, self).critical(msg, *args, **kwargs)
+
+    def system(self, msg, *args, **kwargs):
+        self.critical(msg, *args, **kwargs)

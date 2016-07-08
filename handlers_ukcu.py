@@ -152,12 +152,10 @@ def handler_ukcu_generator_rw(log, parsing_data, param_data) -> list:
         if ukcu_code_patch[1] or request_data[0] == ukcu_code_patch[0]:
             ukcu_code_patch[0] = request_data[0]
             ukcu_code_patch[1] = False
-            log.debug('ukcu_code_patch after={}'.format(hex(ukcu_code_patch[0])))
             ukcu_answer_code_data = globals().get('config_vars').get('ukcu_answer_code_data')
             answer_code, answer_data = ukcu_answer_code_data
 
             len_packets = len(ukcu_shell_packets)
-            log.debug('list append = {}'.format(list(map(hex, ukcu_shell_packets))))
 
             if len_packets <= 8:
                 if code == UKCU_COMMANDS.get(UKCU_SET_SIGNALS):
@@ -165,17 +163,18 @@ def handler_ukcu_generator_rw(log, parsing_data, param_data) -> list:
                     if len(ukcu_shell_packets) == 8:
                         ukcu_code_patch[2] = __extract_packet_recv(ukcu_shell_packets)
                         if ukcu_code_patch[2] == ukcu_code_patch[0]:
-                            log.info('\n ++++++++++++++ Распознана команда: 0x{} ("{}")\n'.format(
+                            log.error('++++ Распознана команда: 0x{} ("{}")\n'.format(
                                 hex(ukcu_code_patch[2])[2:].upper(), request_data[1]))
                         if response_data is None:
                             ukcu_clear_shell_packets[0] = True
                     return [UkcuPacket(answer_code, answer_data).to_bytes()]
             elif code == UKCU_COMMANDS.get(UKCU_SET_SIGNALS) and len_packets in (9, 11):
                 data_hex = hex(packet_data)[2:].upper()
+                cmd_hex = hex(ukcu_code_patch[0])[2:].upper()
                 if packet_data == UKCU_READ_LOW_ADDRESS:
-                    log.info('* Request read from Low address: 0x{}'.format(data_hex))
+                    log.error(' "0x{}" запрос чтение мл. адреса: 0x{}'.format(cmd_hex, data_hex))
                 elif packet_data == UKCU_READ_HIGH_ADDRESS:
-                    log.info('* Request read from High address: 0x{}'.format(data_hex))
+                    log.error(' "0x{}: запрос чтение стар. адреса: 0x{}'.format(cmd_hex, data_hex))
                 return [UkcuPacket(answer_code, answer_data).to_bytes()]
             elif code == UKCU_COMMANDS.get(UKCU_GET_SIGNALS) and len_packets in (10, 12) and packet_data == UKCU_R_MASK:
                 if isinstance(response_data, list) and len(response_data) == 2:
@@ -190,16 +189,18 @@ def handler_ukcu_generator_rw(log, parsing_data, param_data) -> list:
                     ukcu_clear_shell_packets[0] = True
 
                 data_hex = hex(data)[2:].upper()
+                cmd_hex = hex(ukcu_code_patch[0])[2:].upper()
                 if ukcu_shell_packets[-2] == UKCU_READ_LOW_ADDRESS:
-                    log.info('* Response read data in Low address: 0x{}'.format(data_hex))
+                    log.error('* Ответ на "0x{}" чтение мл. адреса: 0x{}'.format(cmd_hex, data_hex))
                 elif ukcu_shell_packets[-2] == UKCU_READ_HIGH_ADDRESS:
-                    log.info('* Response read data in High address: 0x{}'.format(data_hex))
+                    log.error('* Ответ на "0x{}" чтение стар. адреса: 0x{}'.format(cmd_hex, data_hex))
 
                 ukcu_answer_resp_code = globals().get('config_vars').get('ukcu_answer_resp_code')
                 return [UkcuPacket(ukcu_answer_resp_code, data << 8).to_bytes()]
         elif len(ukcu_shell_packets) == 8 and request_data[0] == ukcu_code_patch[2]:
-            log.info('\n ++++++++++++++ Распознана команда: 0x{} ("{}")\n'.format(hex(ukcu_code_patch[2])[2:].upper(),
-                                                                                  request_data[1]))
+            log.error(' +++ Распознана команда: 0x{} ("{}")\n'.format(hex(ukcu_code_patch[2])[2:].upper(),
+                                                                      request_data[1]))
+            ukcu_code_patch[0] = ukcu_code_patch[2]
             if response_data is None:
                 ukcu_clear_shell_packets[0] = True
 
