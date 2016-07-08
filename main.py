@@ -14,7 +14,7 @@ from ImitatorDevice.protocol.handling_protocol import GuiUsedException
 
 
 def init_logging(params):
-    logger = Logger('ImitatorSomeDevice')
+    logger = Logger('ImDev')
     log_formatter = logging.Formatter(u'%(asctime)-15s <%(levelname)-1.1s> [%(name)s~%(qthreadName)s] %(message)s')
     logger.setLevel(params.level)
 
@@ -51,10 +51,6 @@ if __name__ == '__main__':
     cmd = ''
     settings_conf = HandlingProtocol(logger)
     if params.interface == 'cli':
-        try:
-            start_server_cli(logger, params, settings_conf, file_conf)
-        except GuiUsedException:
-            # params.interface = 'gui'
-            start_server_gui(logger, params, settings_conf, file_conf)
+        start_server_cli(logger, params, settings_conf, file_conf)
     elif params.interface == 'gui':
         start_server_gui(logger, params, settings_conf, file_conf)
