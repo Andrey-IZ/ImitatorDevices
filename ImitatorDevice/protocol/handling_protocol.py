@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import time
-from ImitatorDevice.protocol.tools_parse_yaml_protocol import str_hex2byte, load_handler, \
+from ImitatorDevice.protocol.tools_parse_yaml_protocol import load_handler, load_conf_test, str_dict_keys_lower
     load_conf_test, str_dict_keys_lower
 from ImitatorDevice.socket.socket_settings import SocketSettings
 from ImitatorDevice.serial.serial_port_settings import SerialPortSettings
@@ -47,6 +47,7 @@ class HandlingProtocol(object):
         self.__list_gen_full = []
 
         self.__delay_response_default = 0
+        self.__is_all_handlers_func = False
 
     @property
     def is_emit_send_on_connect(self):
@@ -228,6 +229,7 @@ class HandlingProtocol(object):
         func_parser = load_handler(self.config_vars, **self.__handler_dict_parser)
         res_parsing = func_parser[0](logger, bytes_recv)
         if res_parsing:
+            is_return = False
             for handler_dict_response, request, response, doc, order, index, delay in self.__list_gen_full:
                 is_delay = False
                 if order == CH_ORDER_GENERATOR_FULL:
@@ -242,9 +244,12 @@ class HandlingProtocol(object):
                                         doc, order, index, func_handler_response.__name__))
                                 list_send_data.extend(func_list_result)
                                 list_index.append(index)
+                                is_return = True
                             is_delay = True
                         if is_delay:
                             self.__delay_response(logger, delay)
+                        if is_return and not self.__is_all_handlers_func:
+                            return list_send_data, list_index
                     else:
                         raise ValueError('!ERROR: Don\'t found keyword "{}": {}.'.format(
                             KW_HANDLER_RESPONSE, handler_dict_response))
@@ -451,7 +456,7 @@ class HandlingProtocol(object):
                     doc, data_packet, order, index))
         return list_packet
 
-    def __process_generation_reponse(self, param_data, param_info):
+    def __process_generation_reponse(self, log, param_data, param_info):
         list_generator_resp, response, list_req, bytes_recv = param_data
         doc, order = param_info
         for generator_resp in list_generator_resp:
@@ -471,7 +476,7 @@ class HandlingProtocol(object):
                         else:
                             write_data = generator_resp(packet_response, response)
 
-                        self._log.warning(u'!WARNING Handling command: "{0}", function = "{2}", order = {1}; '
+                        log.warning(u'!WARNING Handling command: "{0}", function = "{2}", order = {1}; '
                                           u'packet count = {3} of {4}'.format(doc, order, generator_resp.__name__,
                                                                               self.__count_req_generator_packet + 1,
                                                                               len_list_req))
@@ -484,7 +489,7 @@ class HandlingProtocol(object):
                                 "!Error at time processing generation response: {}".format(
                                     generator_resp.__name__))
                     if self.__count_req_generator_packet > 0:
-                        self._log.error(
+                        log.error(
                             u'!ERROR: Divergence protocol command\'s: command="{0}",'
                             u'line_packet="{1}", function="{2}"'.format(
                                 doc, self.__count_req_generator_packet + 1, generator_resp))
@@ -589,7 +594,7 @@ class HandlingProtocol(object):
             if order == "generator" and self.__count_req_generator_packet >= 0 and \
                             self.__count_req_zip_packet == 0 and self.__count_req_semiduplex_packet == 0:
                 list_generator_resp, response = cmd[2]
-                result = self.__process_generation_reponse((list_generator_resp, response, list_req, bytes_recv),
+                result = self.__process_generation_reponse(logger, (list_generator_resp, response, list_req, bytes_recv),
                                                            (doc, order))
                 if result:
                     self.__delay_response(logger, delay)
