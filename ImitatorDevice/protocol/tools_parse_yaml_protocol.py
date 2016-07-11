@@ -88,19 +88,6 @@ def __import_function(file_name, function_name, config_vars):
 #             raise ImportError("!Error import funcion: '{1}' from file name: '{0}'".format(file_name, function_name))
 #
 
-def str_hex2byte(request):
-    if not isinstance(request, str):
-        return None
-
-    str_packet_pure = re.sub(r'[^A-Za-z0-9]', '', request)
-    try:
-        bytes_req = bytes.fromhex(str_packet_pure)
-    except ValueError as e:
-        raise ValueError(
-            "Error convert string to bytes: before={}; after={}; {}".format(request, str_packet_pure, e.args))
-
-    return bytes_req
-
 
 def str_dict_keys_lower(dict_option):
     """

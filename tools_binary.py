@@ -1,4 +1,5 @@
 import binascii
+import re
 import struct
 import bitstring
 from bitstring import BitArray
@@ -21,6 +22,20 @@ def unpack_bits(byte_array, fmt, **kwargs):
 
 def pack_bits(fmt, *values, **kwargs):
     return bitstring.pack(fmt, *values, **kwargs)
+
+
+def str_hex2byte(request):
+    if not isinstance(request, str):
+        return None
+
+    str_packet_pure = re.sub(r'[^A-Za-z0-9]', '', request)
+    try:
+        bytes_req = bytes.fromhex(str_packet_pure)
+    except ValueError as e:
+        raise ValueError(
+            "Error convert string to bytes: before={}; after={}; {}".format(request, str_packet_pure, e.args))
+
+    return bytes_req
 
 
 def byte2hex_str(byte_array):

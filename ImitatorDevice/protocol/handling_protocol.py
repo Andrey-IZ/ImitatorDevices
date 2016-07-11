@@ -2,7 +2,7 @@
 
 import time
 from ImitatorDevice.protocol.tools_parse_yaml_protocol import load_handler, load_conf_test, str_dict_keys_lower
-    load_conf_test, str_dict_keys_lower
+from tools_binary import str_hex2byte
 from ImitatorDevice.socket.socket_settings import SocketSettings
 from ImitatorDevice.serial.serial_port_settings import SerialPortSettings
 
@@ -272,6 +272,7 @@ class HandlingProtocol(object):
         cmd = str_dict_keys_lower(settings_conf)
         self.__delay_response_default = cmd.get(KW_DELAY_RESPONSE)
         self.config_vars = cmd.get('config_vars', {})
+        self.__is_all_handlers_func = cmd.get('is_all_handlers_func', False)
         if isinstance(cmd, dict):
             parser = cmd.get(KW_HANDLER_PARSER)
             if parser:
