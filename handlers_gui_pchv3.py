@@ -347,3 +347,18 @@ def handler_pchv3_set_control_cap(log, parsing_data, param_data) -> [bytes]:
         return [bytes.fromhex(response_data)]
     return []
 
+
+def handler_pchv3_set_control_adt7310(log, parsing_data, param_data) -> [bytes]:
+    len_packet, code, bytes_recv = parsing_data
+    request_data, response_data, control_gui = param_data
+    code_req, code_resp = request_data
+    if code == code_req:
+
+        data = value_from_qt_bytes('quint16', bytes_recv[4:6])
+
+        log.info(
+            '+++ Команда: "Установить управление adt7310": Данные = {}'.format(data))
+        return [__qt_create_packet({'value': code_resp, 'type': 'quint16'},
+                                   {'value': bool(response_data), 'type': 'bool'})]
+    return []
+
