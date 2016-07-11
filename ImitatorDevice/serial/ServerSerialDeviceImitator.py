@@ -84,8 +84,8 @@ class ServerSerialDeviceimitator(ThreadServerDeviceImitator):
                     time.sleep(0.004)
 
                 if self.bytes_recv:
-                    self.log.warning("======================================")
-                    self.log.warning("-> recv: {}".format((byte2hex_str(self.bytes_recv))))
+                    self.log.info("======================================")
+                    self.log.info("-> recv: {}".format((byte2hex_str(self.bytes_recv))))
 
                     if self.dict_values_form:
                         list_packets = self.handler_response(self.log, self.bytes_recv, self.dict_values_form)
@@ -94,7 +94,7 @@ class ServerSerialDeviceimitator(ThreadServerDeviceImitator):
                     if list_packets:
                         for packet in list_packets:
                             if packet:
-                                self.log.warning("<- send: {}".format(byte2hex_str(packet)))
+                                self.log.info("<- send: {}".format(byte2hex_str(packet)))
                                 self.serial.write(packet)
                     self.bytes_recv.clear()
 

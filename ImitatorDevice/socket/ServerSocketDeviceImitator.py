@@ -136,14 +136,14 @@ class ServerSocketDeviceimitator(ThreadServerDeviceImitator):
                         print(text)
                         self.log.debug(text + '\n')
                     else:  # ********** handling packets ******************
-                        self.log.warning("======================================")
-                        self.log.warning("-> recv: {} from {}".format(byte2hex_str(data_recv), addr))
+                        self.log.info("======================================")
+                        self.log.info("-> recv: {} from {}".format(byte2hex_str(data_recv), addr))
 
                         list_packets = self.handler_response(data_recv)
                         if list_packets:
                             for packet in list_packets:
                                 if packet:
-                                    self.log.warning("<- send: {} to {}".format(byte2hex_str(packet), addr),
+                                    self.log.info("<- send: {} to {}".format(byte2hex_str(packet), addr),
                                                      extra=self.log_var)
                                     self.socket.sendto(packet, addr)
         except socket.error as err:
