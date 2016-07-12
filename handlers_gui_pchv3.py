@@ -353,12 +353,13 @@ def handler_pchv3_set_control_adt7310(log, parsing_data, param_data) -> [bytes]:
     request_data, response_data, control_gui = param_data
     code_req, code_resp = request_data
     if code == code_req:
+        result = control_gui.get_ui_value('Состояние питания', 'Источники питания2', 'ADTResult', 'checkbox')
 
         data = value_from_qt_bytes('quint16', bytes_recv[4:6])
 
         log.info(
             '+++ Команда: "Установить управление adt7310": Данные = {}'.format(data))
         return [__qt_create_packet({'value': code_resp, 'type': 'quint16'},
-                                   {'value': bool(response_data), 'type': 'bool'})]
+                                   {'value': bool(result), 'type': 'bool'})]
     return []
 
