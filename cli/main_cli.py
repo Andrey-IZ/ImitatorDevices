@@ -41,7 +41,7 @@ def start_server_cli(logger, params, settings_conf, file_conf):
                         serial_server = serial_server_start(settings_conf, serial_logger)
                     if params.run_socket:
                         socket_logger = copy.copy(logger)
-                        serial_logger.name = 'Socket'
+                        socket_logger.name = 'Socket'
                         socket_server = socket_server_start(settings_conf, socket_logger)
 
                     if not serial_server and not socket_server:
