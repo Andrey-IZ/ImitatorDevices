@@ -10,7 +10,6 @@ from cli.main_cli import start_server_cli
 from gui.main_gui import start_server_gui
 from gui.qt_logging import QtHandler
 from libs.log_tools.logger import Logger
-from ImitatorDevice.protocol.handling_protocol import GuiUsedException
 
 
 def init_logging(params):
@@ -40,12 +39,12 @@ if __name__ == '__main__':
 
     logger = init_logging(params)
 
-    logger.info("--- Start application ---")
-    logger.info("Level output messages set to " + params.level_str)
+    logger.critical("--- Start application ---")
+    logger.critical("Level output messages set to " + params.level_str)
 
     file_conf = params.path_to_conf
     if not os.path.exists(file_conf):
-        logger.error('!Error: configuration file "{}" not found'.format(file_conf))
+        logger.critical('!Error: configuration file "{}" not found'.format(file_conf))
         sys.exit(1)
 
     cmd = ''

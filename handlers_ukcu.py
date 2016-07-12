@@ -129,16 +129,14 @@ def handler_parser_ucku(log, bytes_recv):
         ukcu_clear_shell_packets = globals().get('config_vars').get('ukcu_clear_shell_packets')
         ukcu_shell_packets = globals().get('config_vars').get('ukcu_shell_packets')
         ukcu_code_patch = globals().get('config_vars').get('ukcu_code_patch')
-        code_req = None
         if ukcu_clear_shell_packets[0]:
             ukcu_shell_packets.clear()
-            # ukcu_code_patch[1] = True
             ukcu_code_patch[0] = 0
             ukcu_clear_shell_packets[0] = False
             log.info('list cleared = {}'.format(ukcu_shell_packets))
         if len(ukcu_shell_packets) == 8:
             ukcu_code_patch[0] = __extract_packet_recv(ukcu_shell_packets)
-            log.error(' --- CODE = {}'.format(hex(ukcu_code_patch[0])))
+            log.error(' --- CODE = 0x{}'.format(hex(ukcu_code_patch[0])[2:].upper()))
         ukcu_shell_packets.append(packet.data)
         return packet.code, packet.data
     return None

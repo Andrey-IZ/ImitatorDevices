@@ -14,17 +14,17 @@ import copy
 def start_server_cli(logger, params, settings_conf, file_conf):
     if params.run_serial or params.run_socket:
         while True:
-            logger.warning("Imitator serial devices started")
+            logger.critical("Imitator serial devices started")
             print(
                 u">>> Enter 'exit' or Ctrl+C enter for quit. "
                 u"Enter 'start' to start server. \n>>> Enter 'restart' for restart servers. ")
             print(u">>> Enter 'reconf' for reload configuration file without restart of servers")
 
-            logger.info("Parsing configuration file: {}".format(file_conf))
+            logger.critical("Parsing configuration file: {}".format(file_conf))
             try:
                 stat = settings_conf.parse(file_conf)
                 if params.is_show_stat:
-                    logger.info("Results parsing file {}:".format(file_conf) + stat)
+                    logger.critical("Results parsing file {}:".format(file_conf) + stat)
             except GuiUsedException:
                 raise GuiUsedException()
             except Exception as err:
@@ -37,9 +37,11 @@ def start_server_cli(logger, params, settings_conf, file_conf):
                 try:
                     if params.run_serial:
                         serial_logger = copy.copy(logger)
+                        serial_logger.name = 'Serial'
                         serial_server = serial_server_start(settings_conf, serial_logger)
                     if params.run_socket:
                         socket_logger = copy.copy(logger)
+                        serial_logger.name = 'Socket'
                         socket_server = socket_server_start(settings_conf, socket_logger)
 
                     if not serial_server and not socket_server:
@@ -54,7 +56,7 @@ def start_server_cli(logger, params, settings_conf, file_conf):
                             break
                         elif cmd == 'reconf':
                             settings_conf.parse(params.path_to_conf)
-                            logger.warning('File configuration: {} was reload'.format(params.path_to_conf))
+                            logger.critical('File configuration: {} was reload'.format(params.path_to_conf))
 
                 except SerialDeviceException as err:
                     logger.error("!Error: occurrence with serial port server: {}".format(err))
