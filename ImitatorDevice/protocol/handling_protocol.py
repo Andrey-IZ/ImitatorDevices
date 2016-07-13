@@ -1,7 +1,10 @@
 #!/usr/bin/env python
 
 import time
-from ImitatorDevice.protocol.tools_parse_yaml_protocol import load_handler, load_conf_test, str_dict_keys_lower
+import os.path
+import sys
+from ImitatorDevice.protocol.tools_parse_yaml_protocol import load_handler, load_conf_test, str_dict_keys_lower, \
+    load_handler_dynamic
 from tools_binary import str_hex2byte
 from ImitatorDevice.socket.socket_settings import SocketSettings
 from ImitatorDevice.serial.serial_port_settings import SerialPortSettings
@@ -11,6 +14,7 @@ CH_ORDER_GENERATOR, CH_ORDER_ZIP, CH_ORDER_SEMIDUPLEX, CH_ORDER_GENERATOR_FULL =
     'generator', 'zip', 'semiduplex', 'full-generator')
 KW_DOC, KW_RESPONSE, KW_REQUEST, KW_EMITSEND, KW_EMIT_TRIGGER, KW_EMIT_TIMEOUT, KW_HANDLER_RESPONSE, KW_HANDLER_REQUEST = (
     'doc', 'response', 'request', 'emit_send', 'trigger', 'timeout', 'handler_response', 'handler_request')
+KW_HANDLER_FUNC_NAME, KW_HANDLER_MODULE_NAME = 'function_name', 'module_name'
 KW_ORDER, KW_DELAY_RESPONSE, KW_EMIT_LIMIT, KW_HANDLER_PARSER = ('order', 'delay_response', 'limit', 'handler_parser')
 CHLIST_ORDER = (CH_ORDER_GENERATOR, CH_ORDER_ZIP, CH_ORDER_SEMIDUPLEX, CH_ORDER_GENERATOR_FULL)
 CHLIST_TRIGGER = (CH_ESTRIGGER_CON, CH_ESTRIGGER_TIMEOUT)
@@ -45,6 +49,7 @@ class HandlingProtocol(object):
 
         self.__handler_dict_parser = {}
         self.__list_gen_full = []
+        self.__dict_compile_read = {}
 
         self.__delay_response_default = 0
         self.__is_all_handlers_func = False
@@ -226,7 +231,11 @@ class HandlingProtocol(object):
         list_send_data = []
         list_index = []
 
-        func_parser = load_handler(self.config_vars, **self.__handler_dict_parser)
+        func_name = self.__handler_dict_parser.get(KW_HANDLER_FUNC_NAME)
+        module_name = self.__handler_dict_parser.get(KW_HANDLER_MODULE_NAME)
+        compiled_file = self.__dict_compile_read.get(module_name + '+' + func_name)
+        func_parser = load_handler_dynamic(self.config_vars,
+                                           function_name=func_name, compiled_file=compiled_file)
         res_parsing = func_parser[0](logger, bytes_recv)
         if res_parsing:
             is_return = False
@@ -234,7 +243,12 @@ class HandlingProtocol(object):
                 is_delay = False
                 if order == CH_ORDER_GENERATOR_FULL:
                     if isinstance(handler_dict_response, dict):
-                        list_func_handler_response = load_handler(self.config_vars, **handler_dict_response)
+                        func_name = handler_dict_response.get(KW_HANDLER_FUNC_NAME)
+                        module_name = handler_dict_response.get(KW_HANDLER_MODULE_NAME)
+                        compiled_file = self.__dict_compile_read.get(module_name + '+' + func_name)
+                        list_func_handler_response = load_handler_dynamic(self.config_vars,
+                                                                          function_name=func_name,
+                                                                          compiled_file=compiled_file)
                         for func_handler_response in list_func_handler_response:
                             param = (request, response, control_gui)
                             func_list_result = func_handler_response(logger, res_parsing, param)
@@ -254,9 +268,14 @@ class HandlingProtocol(object):
                         raise ValueError('!ERROR: Don\'t found keyword "{}": {}.'.format(
                             KW_HANDLER_RESPONSE, handler_dict_response))
                 else:
-                    raise ValueError('!ERROR: Wrong using order "{}": Use order: {}'.format(order, CH_ORDER_GENERATOR_FULL))
+                    raise ValueError(
+                        '!ERROR: Wrong using order "{}": Use order: {}'.format(order, CH_ORDER_GENERATOR_FULL))
 
         return list_send_data, list_index
+
+    def __check_handler(self, handler_dict):
+        if not (handler_dict.get('module_name') and handler_dict.get('function_name')):
+            raise ValueError('Error: Invalid structure handler function!')
 
     def parse(self, file_name, gui_protocol=None):
         """
@@ -276,6 +295,9 @@ class HandlingProtocol(object):
         if isinstance(cmd, dict):
             parser = cmd.get(KW_HANDLER_PARSER)
             if parser:
+                self.__check_handler(parser)
+                self.__add_compile_read(module_name=parser.get(KW_HANDLER_MODULE_NAME),
+                                        function_name=parser.get(KW_HANDLER_FUNC_NAME))
                 self.__handler_dict_parser = parser
             gui_dict = cmd.get('gui')
             if gui_dict and gui_protocol:
@@ -283,56 +305,64 @@ class HandlingProtocol(object):
             elif not gui_protocol and not gui_dict:
                 print('no gui')
                 # raise GuiUsedException("")
+        try:
+            for index, cmd in enumerate(conf[1:]):
+                cmd = str_dict_keys_lower(cmd)
+                if not cmd:
+                    continue
+                doc = cmd.get(KW_DOC)
+                if not isinstance(doc, str) and not doc:
+                    raise ValueError(
+                        u"Parse error: in conf didn't find parameter doc or it is empty: command = {}".format(index))
+                doc = doc.strip()
 
-        for index, cmd in enumerate(conf[1:]):
-            cmd = str_dict_keys_lower(cmd)
-            if not cmd:
-                continue
-            doc = cmd.get(KW_DOC)
-            if not isinstance(doc, str) and not doc:
-                raise ValueError(
-                    u"Parse error: in conf didn't find parameter doc or it is empty: command = {}".format(index))
-            doc = doc.strip()
+                handler_response = cmd.get(KW_HANDLER_RESPONSE)
+                self.__check_handler(handler_response)
+                response = cmd.get(KW_RESPONSE)
+                order = cmd.get(KW_ORDER, CH_ORDER_ZIP).lower()
+                request = cmd.get(KW_REQUEST)
 
-            handler_response = cmd.get(KW_HANDLER_RESPONSE)
-            response = cmd.get(KW_RESPONSE)
-            order = cmd.get(KW_ORDER, CH_ORDER_ZIP).lower()
-            request = cmd.get(KW_REQUEST)
+                gui_dict = cmd.get('gui')
+                if gui_dict and gui_protocol:
+                    gui_protocol.append(gui_dict)
 
-            gui_dict = cmd.get('gui')
-            if gui_dict and gui_protocol:
-                gui_protocol.append(gui_dict)
+                emit_send = cmd.get(KW_EMITSEND, '')
 
-            emit_send = cmd.get(KW_EMITSEND, '')
+                if emit_send != '':
+                    try:
+                        self.__parse_emit_send(cmd.get(KW_EMITSEND), handler_response, response, (doc, order, index))
+                    except Exception as err:
+                        self._log.error(err)
+                        raise Exception(str(err) + ', on index = {}'.format(index)) from err
+                    continue
 
-            if emit_send != '':
-                try:
-                    self.__parse_emit_send(cmd.get(KW_EMITSEND), handler_response, response, (doc, order, index))
-                except Exception as err:
-                    self._log.error(err)
-                    raise Exception(str(err) + ', on index = {}'.format(index)) from err
-                continue
+                delay = cmd.get(KW_DELAY_RESPONSE)
+                if not delay and self.__delay_response_default:
+                    delay = self.__delay_response_default
 
-            delay = cmd.get(KW_DELAY_RESPONSE)
-            if not delay and self.__delay_response_default:
-                delay = self.__delay_response_default
+                if order == CH_ORDER_GENERATOR_FULL:
+                    self.__add_compile_read(module_name=handler_response.get(KW_HANDLER_MODULE_NAME),
+                                            function_name=handler_response.get(KW_HANDLER_FUNC_NAME))
+                    self.__list_gen_full.append((handler_response, request, response, doc, order, index, delay))
+                    continue
 
-            if order == CH_ORDER_GENERATOR_FULL:
-                self.__list_gen_full.append((handler_response, request, response, doc, order, index, delay))
-                continue
+                handler_request = cmd.get(KW_HANDLER_REQUEST)
+                self.__check_handler(handler_request)
 
-            handler_request = cmd.get(KW_HANDLER_REQUEST)
+                list_req = self.__genearate_list_packet(handler_request, request, (doc, order, index))
+                if len(list_req) == 0:
+                    raise ValueError("Parse error: packet loaded nothing for: {0}".format(doc))
 
-            list_req = self.__genearate_list_packet(handler_request, request, (doc, order, index))
-            if len(list_req) == 0:
-                raise ValueError("Parse error: packet loaded nothing for: {0}".format(doc))
-
-            gen_list_resp = self.__generate_list_response(handler_response, order, response, (doc, order))
-            if order != CH_ORDER_SEMIDUPLEX and isinstance(gen_list_resp, list) and len(list_req) != len(gen_list_resp):
-                raise ValueError("!! Error: Generating lists for responses and requests is not equal: "
-                                 "{0} vs {1}, doc = '{2}', order = {3}".format(len(gen_list_resp), len(list_req), doc,
-                                                                               order))
-            self.__lists_protocol.append((order, list_req, gen_list_resp, doc, index, delay))
+                gen_list_resp = self.__generate_list_response(handler_response, order, response, (doc, order))
+                if order != CH_ORDER_SEMIDUPLEX and isinstance(gen_list_resp, list) and len(list_req) != len(
+                        gen_list_resp):
+                    raise ValueError("!! Error: Generating lists for responses and requests is not equal: "
+                                     "{0} vs {1}, doc = '{2}', order = {3}".format(len(gen_list_resp), len(list_req),
+                                                                                   doc,
+                                                                                   order))
+                self.__lists_protocol.append((order, list_req, gen_list_resp, doc, index, delay))
+        except Exception as err:
+            raise ValueError('!! Error: Cause a fault while running parsing conf\'s file') from err
 
         if self.__lists_protocol and isinstance(self.__lists_protocol[0], tuple) and len(self.__lists_protocol) > 0:
             list_unique = []
@@ -354,6 +384,19 @@ class HandlingProtocol(object):
         self.__post_parse_init()
 
         return self.__get_statistic_str()
+
+    def __add_compile_read(self, module_name, function_name):
+        key = module_name + '+' + function_name
+        if isinstance(module_name, str) and key not in self.__dict_compile_read:
+            path_file = os.path.abspath(module_name) if module_name.endswith('.py') else os.path.abspath(module_name) + '.py'
+
+            path_dir = os.path.dirname(path_file).split('\\')[-1]
+            if path_dir not in sys.path:
+                sys.path.append(path_dir)
+            try:
+                self.__dict_compile_read[key] = compile(open(path_file, "rb").read(), path_file, 'exec')
+            except ImportError:
+                raise ImportError("!Error compile file: '{0}'".format(module_name))
 
     def __get_statistic_str(self):
         s = r'''

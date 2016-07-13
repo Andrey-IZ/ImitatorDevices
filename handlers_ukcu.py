@@ -216,7 +216,6 @@ def handler_ukcu_gen_shift_read_random(log, parsing_data, param_data) -> list:
                       'code="0x{}", doc="{}"; Use: [min, max]'.format(response_data, hex(request_data[0]), request_data[1]))
 
 
-
 def handler_ukcu_generate_rw_random(log, parsing_data, param_data) -> list:
     request_data, response_data, control_gui = param_data
     ukcu_code_patch = globals().get('config_vars').get('ukcu_code_patch')

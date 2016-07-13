@@ -19,8 +19,8 @@ def load_conf_test(filename):
 def load_handler(config_vars, module_name, function_name):
     """
     Loads function-handler from file, which specify to configuration's file
-    :param global_vars:
     :param module_name:
+    :param config_vars:
     :param function_name:
     :return: function object of handler
     """
@@ -31,6 +31,41 @@ def load_handler(config_vars, module_name, function_name):
         return list_func
     else:
         return [__import_function(module_name, function_name, config_vars)]
+
+
+def load_handler_dynamic(config_vars, function_name, compiled_file):
+    """
+    Loads function-handler from file, which specify to configuration's file
+    :param config_vars:
+    :param function_name:
+    :param compiled_file:
+    :return:
+    """
+    if isinstance(function_name, list):
+        list_func = list()
+        for function in function_name:
+            list_func.append(__import_function_dynamic(compiled_file, function, config_vars))
+        return list_func
+    else:
+        return [__import_function_dynamic(compiled_file, function_name, config_vars)]
+
+
+def __import_function(file_name, function_name, config_vars):
+    if isinstance(file_name, str) and isinstance(function_name, str):
+        path_file = os.path.abspath(file_name) if file_name.endswith('.py') else os.path.abspath(file_name) + '.py'
+        module_name = os.path.basename(path_file)[:-3] if file_name.endswith('.py') else os.path.basename(path_file)
+        path_dir = os.path.dirname(path_file).split('\\')[-1]
+        if path_dir not in sys.path:
+            sys.path.append(path_dir)
+        try:
+            exec(compile(open(path_file, "rb").read(), path_file, 'exec'))
+            globals().update(locals())
+            func = locals().get(function_name)
+            if not func:
+                raise ImportError()
+            return func
+        except ImportError:
+            raise ImportError("!Error import funcion: '{1}' from file name: '{0}'".format(file_name, function_name))
 
 
 # def __import_function(file_name, function_name):
@@ -54,22 +89,17 @@ def load_handler(config_vars, module_name, function_name):
 #         except ImportError:
 #             raise ImportError("!Error import funcion: '{1}' from file name: '{0}'".format(file_name, function_name))
 # #
-def __import_function(file_name, function_name, config_vars):
-    if isinstance(file_name, str) and isinstance(function_name, str):
-        path_file = os.path.abspath(file_name) if file_name.endswith('.py') else os.path.abspath(file_name) + '.py'
-        module_name = os.path.basename(path_file)[:-3] if file_name.endswith('.py') else os.path.basename(path_file)
-        path_dir = os.path.dirname(path_file).split('\\')[-1]
-        if path_dir not in sys.path:
-            sys.path.append(path_dir)
+def __import_function_dynamic(compiled_file, function_name, config_vars):
+    if compiled_file and isinstance(function_name, str):
         try:
-            exec(compile(open(path_file, "rb").read(), path_file, 'exec'))
+            exec(compiled_file)
             globals().update(locals())
             func = locals().get(function_name)
             if not func:
                 raise ImportError()
             return func
         except ImportError:
-            raise ImportError("!Error import funcion: '{1}' from file name: '{0}'".format(file_name, function_name))
+            raise ImportError("!Error import funcion: '{}' ".format(function_name))
 
 
 # def __import_function(file_name, function_name):
