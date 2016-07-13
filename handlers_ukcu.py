@@ -133,11 +133,12 @@ def handler_parser_ucku(log, bytes_recv):
             ukcu_shell_packets.clear()
             ukcu_code_patch[0] = 0
             ukcu_clear_shell_packets[0] = False
-            log.info('list cleared = {}'.format(ukcu_shell_packets))
+        ukcu_shell_packets.append(packet.data)
         if len(ukcu_shell_packets) == 8:
             ukcu_code_patch[0] = __extract_packet_recv(ukcu_shell_packets)
-            log.error(' --- CODE = 0x{}'.format(hex(ukcu_code_patch[0])[2:].upper()))
-        ukcu_shell_packets.append(packet.data)
+            ukcu_shell_packets.clear()
+            ukcu_code_patch[1] = True
+            # log.error(' --- CODE = 0x{}'.format(hex(ukcu_code_patch[0])[2:].upper()))
         return packet.code, packet.data
     return None
 
@@ -145,31 +146,42 @@ def handler_parser_ucku(log, bytes_recv):
 def handler_ukcu_reply_kvitok(log, parsing_data, param_data) -> list:
     code, packet_data = parsing_data
     request_data, response_data, control_gui = param_data
-    if code == UKCU_COMMANDS.get(UKCU_SET_SIGNALS):
-        return [str_hex2byte(response_data)]  # code: 0x011F,  data: 0x1000100
+    ukcu_shell_packets = globals().get('config_vars').get('ukcu_shell_packets')
+    ukcu_kvitok = globals().get('config_vars').get('ukcu_kvitok')
+    ukcu_code_patch = globals().get('config_vars').get('ukcu_code_patch')
+    # if code == UKCU_COMMANDS.get(UKCU_SET_SIGNALS) and len(ukcu_shell_packets) <= 8:
+    if code == UKCU_COMMANDS.get(UKCU_SET_SIGNALS) and len(ukcu_shell_packets) < 8 and not ukcu_code_patch[1]:
+        # log.error('======== kvitok ====== {} '.format(len(globals().get('config_vars').get('ukcu_shell_packets'))))
+        return [str_hex2byte(ukcu_kvitok[0])]  # code: 0x011F,  data: 0x1000100
 
 
 def handler_ukcu_generate_rw(log, parsing_data, param_data) -> list:
-    # code, packet_data = parsing_data
+    code, packet_data = parsing_data
     request_data, response_data, control_gui = param_data
     ukcu_code_patch = globals().get('config_vars').get('ukcu_code_patch')
     ukcu_shell_packets = globals().get('config_vars').get('ukcu_shell_packets')
+    # log.error('--- rw ---- {}'. format(len(globals().get('config_vars').get('ukcu_shell_packets'))))
     if ukcu_code_patch[0] == request_data[0]:
-        ukcu_clear_shell_packets = globals().get('config_vars').get('ukcu_clear_shell_packets')
+        cmd_hex = hex(ukcu_code_patch[0])[2:].upper()
+        if code == UKCU_COMMANDS.get(UKCU_SET_SIGNALS):
+            log.error(' * CODE: "0x{}", DOC: "{}"'.format(cmd_hex, request_data[1]))
+            ukcu_kvitok = globals().get('config_vars').get('ukcu_kvitok')
+            ukcu_code_patch[1] = False
+            return [str_hex2byte(ukcu_kvitok[0])]
 
+        ukcu_clear_shell_packets = globals().get('config_vars').get('ukcu_clear_shell_packets')
         if isinstance(response_data, list) and len(response_data) == 2:
             if ukcu_shell_packets[-2] == UKCU_READ_LOW_ADDRESS:
                 data = response_data[0]
             elif ukcu_shell_packets[-2] == UKCU_READ_HIGH_ADDRESS:
                 data = response_data[1]
-            if len(ukcu_shell_packets) == 12:
+            if len(ukcu_shell_packets) == 4:
                 ukcu_clear_shell_packets[0] = True
         else:
             data = 0 if response_data is None else response_data
             ukcu_clear_shell_packets[0] = True
 
         data_hex = hex(data)[2:].upper()
-        cmd_hex = hex(ukcu_code_patch[0])[2:].upper()
         if ukcu_shell_packets[-2] == UKCU_READ_LOW_ADDRESS:
             log.error('* Ответ на "0x{}" чтение мл. адреса: 0x{}'.format(cmd_hex, data_hex))
         elif ukcu_shell_packets[-2] == UKCU_READ_HIGH_ADDRESS:
@@ -178,30 +190,31 @@ def handler_ukcu_generate_rw(log, parsing_data, param_data) -> list:
         return [UkcuPacket(UKCU_RESP_REPLY, data << 8).to_bytes()]
 
 
-def handler_ukcu_generate_channel_shift_read(log, parsing_data, param_data) -> list:
+def handler_ukcu_generate_shift_read(log, parsing_data, param_data) -> list:
     request_data, response_data, control_gui = param_data
-    code, packet_data = parsing_data
+    # code, packet_data = parsing_data
     code_req, doc, range_shift = request_data
     ukcu_code_patch = globals().get('config_vars').get('ukcu_code_patch')
-    if ukcu_code_patch[0] in list(range(request_data[0], request_data[0] + range_shift)):
-        return handler_ukcu_generate_rw(log, parsing_data, (ukcu_code_patch, response_data, control_gui))
+    if request_data[0] <= ukcu_code_patch[0] <= request_data[0] + range_shift:
+        return handler_ukcu_generate_rw(log, parsing_data, ((ukcu_code_patch[0], doc), response_data, control_gui))
 
 
-def handler_ukcu_gen_channel_shift_read_random(log, parsing_data, param_data) -> list:
+def handler_ukcu_gen_shift_read_random(log, parsing_data, param_data) -> list:
     request_data, response_data, control_gui = param_data
-    code, packet_data = parsing_data
+    # code, packet_data = parsing_data
     code_req, doc, range_shift = request_data
     ukcu_code_patch = globals().get('config_vars').get('ukcu_code_patch')
-    if ukcu_code_patch[0] in list(range(request_data[0], request_data[0] + range_shift)):
-
+    if request_data[0] <= ukcu_code_patch[0] <= request_data[0] + range_shift:
         if isinstance(response_data, list) and len(response_data) == 2:
             if isinstance(response_data[0], list):
                 response_data = list(map(lambda item: random.randint(item[0], item[1]), response_data))
             elif isinstance(response_data[0], int):
                 response_data = random.randint(response_data[0], response_data[1])
-            return handler_ukcu_generate_rw(log, parsing_data, (ukcu_code_patch, response_data, control_gui))
+            return handler_ukcu_generate_rw(log, parsing_data, ((ukcu_code_patch[0], doc), response_data, control_gui))
         else:
-            log.error('ERROR: invalid response argument: {}'.format(response_data))
+            log.error('ERROR: "Shift Random" invalid response argument: {}, '
+                      'code="0x{}", doc="{}"; Use: [min, max]'.format(response_data, hex(request_data[0]), request_data[1]))
+
 
 
 def handler_ukcu_generate_rw_random(log, parsing_data, param_data) -> list:
@@ -213,9 +226,10 @@ def handler_ukcu_generate_rw_random(log, parsing_data, param_data) -> list:
                 response_data = list(map(lambda item: random.randint(item[0], item[1]), response_data))
             elif isinstance(response_data[0], int):
                 response_data = random.randint(response_data[0], response_data[1])
-            return handler_ukcu_generate_rw(log, parsing_data, (ukcu_code_patch, response_data, control_gui))
+            return handler_ukcu_generate_rw(log, parsing_data, (request_data, response_data, control_gui))
         else:
-            log.error('ERROR: invalid response argument: {}'.format(response_data))
+            log.error('ERROR: "Random" invalid response argument: {}, '
+                      'code="0x{}", doc="{}"; Use: [min, max]'.format(response_data, hex(request_data[0]), request_data[1]))
 
 
 def handler_request_setup_ukcu(log):
