@@ -256,7 +256,7 @@ def socket_server_start(settings_conf, logger, control_gui=None):
         logger.info("Serving socket port: {}".format(settings_conf.socket_settings))
         is_socket_server_start = socket_server.listen()
     except SocketBindPortException as err:
-        raise SocketDeviceException(err) from err
+        print(err)
     except Exception as err:
         raise SocketDeviceException(err) from err
     finally:

@@ -87,7 +87,7 @@ def start_server_cli(logger, params, settings_conf, file_conf):
                 except: pass
                 try: socket_server.stop()
                 except: pass
-                logger.warning(' -- Disconnected all interfaces --')
+                logger.critical(' -- Disconnected all interfaces --')
     else:
         logger.error("!Error: Not defined start interface! Using option: '-c' or/and '-s' ")
-    logger.info('--- exit ---')
+    logger.critical('--- exit ---')

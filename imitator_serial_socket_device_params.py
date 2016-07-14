@@ -42,10 +42,14 @@ class ImitatorSeriaSocketlDeviceParams(ImitatorDeviceParams):
     def run_serial(self):
         if not self._args:
             return None
+        if not (self._args.run_serial and self._args.run_socket):
+            return True
         return self._args.run_serial
 
     @property
     def run_socket(self):
         if not self._args:
             return None
+        if not (self._args.run_serial and self._args.run_socket):
+            return True
         return self._args.run_socket
