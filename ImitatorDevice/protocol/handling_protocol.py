@@ -273,9 +273,11 @@ class HandlingProtocol(object):
 
         return list_send_data, list_index
 
-    def __check_handler(self, handler_dict):
-        if not (handler_dict.get('module_name') and handler_dict.get('function_name')):
-            raise ValueError('Error: Invalid structure handler function!')
+    def __check_handler(self, handler_dict, doc, index):
+        if handler_dict:
+            if not (handler_dict.get(KW_HANDLER_MODULE_NAME) and handler_dict.get(KW_HANDLER_FUNC_NAME)):
+                raise ValueError('Error: Invalid structure handler function: "{} => {}"! DOC="{}", INDEX={}'.format(
+                    handler_dict.get(KW_HANDLER_MODULE_NAME), handler_dict.get(KW_HANDLER_FUNC_NAME), doc, index))
 
     def parse(self, file_name, gui_protocol=None):
         """
@@ -295,7 +297,7 @@ class HandlingProtocol(object):
         if isinstance(cmd, dict):
             parser = cmd.get(KW_HANDLER_PARSER)
             if parser:
-                self.__check_handler(parser)
+                self.__check_handler(parser, 'Parser function', -1)
                 self.__add_compile_read(module_name=parser.get(KW_HANDLER_MODULE_NAME),
                                         function_name=parser.get(KW_HANDLER_FUNC_NAME))
                 self.__handler_dict_parser = parser
@@ -317,7 +319,7 @@ class HandlingProtocol(object):
                 doc = doc.strip()
 
                 handler_response = cmd.get(KW_HANDLER_RESPONSE)
-                self.__check_handler(handler_response)
+                self.__check_handler(handler_response, doc, index)
                 response = cmd.get(KW_RESPONSE)
                 order = cmd.get(KW_ORDER, CH_ORDER_ZIP).lower()
                 request = cmd.get(KW_REQUEST)
@@ -347,7 +349,7 @@ class HandlingProtocol(object):
                     continue
 
                 handler_request = cmd.get(KW_HANDLER_REQUEST)
-                self.__check_handler(handler_request)
+                self.__check_handler(handler_request, doc, index)
 
                 list_req = self.__genearate_list_packet(handler_request, request, (doc, order, index))
                 if len(list_req) == 0:
@@ -388,7 +390,8 @@ class HandlingProtocol(object):
     def __add_compile_read(self, module_name, function_name):
         key = module_name + '+' + function_name
         if isinstance(module_name, str) and key not in self.__dict_compile_read:
-            path_file = os.path.abspath(module_name) if module_name.endswith('.py') else os.path.abspath(module_name) + '.py'
+            path_file = os.path.abspath(module_name) if module_name.endswith('.py') else os.path.abspath(
+                module_name) + '.py'
 
             path_dir = os.path.dirname(path_file).split('\\')[-1]
             if path_dir not in sys.path:
@@ -521,9 +524,9 @@ class HandlingProtocol(object):
                             write_data = generator_resp(packet_response, response)
 
                         log.warning(u'!WARNING Handling command: "{0}", function = "{2}", order = {1}; '
-                                          u'packet count = {3} of {4}'.format(doc, order, generator_resp.__name__,
-                                                                              self.__count_req_generator_packet + 1,
-                                                                              len_list_req))
+                                    u'packet count = {3} of {4}'.format(doc, order, generator_resp.__name__,
+                                                                        self.__count_req_generator_packet + 1,
+                                                                        len_list_req))
                         self.__count_req_generator_packet = self.__increment_counter(self.__count_req_generator_packet,
                                                                                      len_list_req)
                         if write_data is not None:
@@ -638,7 +641,8 @@ class HandlingProtocol(object):
             if order == "generator" and self.__count_req_generator_packet >= 0 and \
                             self.__count_req_zip_packet == 0 and self.__count_req_semiduplex_packet == 0:
                 list_generator_resp, response = cmd[2]
-                result = self.__process_generation_reponse(logger, (list_generator_resp, response, list_req, bytes_recv),
+                result = self.__process_generation_reponse(logger,
+                                                           (list_generator_resp, response, list_req, bytes_recv),
                                                            (doc, order))
                 if result:
                     self.__delay_response(logger, delay)
