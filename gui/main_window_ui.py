@@ -28,6 +28,8 @@ class Ui_MainWindow(object):
         MainWindow.resize(983, 800)
         self.centralwidget = QtGui.QWidget(MainWindow)
         self.centralwidget.setObjectName(_fromUtf8("centralwidget"))
+        self.verticalLayout_CentralWidget = QtGui.QVBoxLayout(self.centralwidget)
+        self.verticalLayout_CentralWidget.setObjectName(_fromUtf8("verticalLayout_CentralWidget"))
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtGui.QMenuBar(MainWindow)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 983, 21))

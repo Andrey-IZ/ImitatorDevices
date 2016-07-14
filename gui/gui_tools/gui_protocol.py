@@ -65,7 +65,8 @@ class GuiProtocol(object):
         self.__log = logger
         self.__dict_gui_ctrl = {}
         self.__default_field_dict_spinbox = {KW_GUI_NAME: 'spinbox', KW_GUI_ROW: 0, KW_GUI_COLUMN: 0, KW_GUI_REF: None,
-                                             KW_GUI_COLSPAN: 1, KW_GUI_ROWSPAN: 1, KW_GUI_DEFAULT: 0, KW_GUI_SB_DIGIT: 0,
+                                             KW_GUI_COLSPAN: 1, KW_GUI_ROWSPAN: 1, KW_GUI_DEFAULT: 0,
+                                             KW_GUI_SB_DIGIT: 0,
                                              KW_GUI_SPINBOX_MAX_VALUE: 100, KW_GUI_SPINBOX_MIN_VALUE: 0}
         self.__default_field_dict_checkbox = {KW_GUI_NAME: 'checkbox', KW_GUI_ROW: 0, KW_GUI_COLUMN: 0,
                                               KW_GUI_REF: None,
@@ -76,7 +77,7 @@ class GuiProtocol(object):
         self.__default_group_dict = {KW_GUI_NAME: 'group', KW_GUI_ROW: 0, KW_GUI_COLUMN: 0,
                                      KW_GUI_COLSPAN: 1, KW_GUI_ROWSPAN: 1, KW_FIELDS: [], KW_GUI_REF: None}
         self.__default_page_dict = {KW_GUI_NAME: 'page1', KW_GROUPS: [], KW_GUI_REF: None}
-        self._add_tabs('Страницы протокола')
+        self.__central_layout = self._init_tabs()
 
     @property
     def logger(self) -> Logger:
@@ -100,6 +101,11 @@ class GuiProtocol(object):
             raise ValueError('!ERROR: <GUI> Found not all keywords of fields')
         if not (set(dict_gui_property.get(KW_GUI_MANUAL_ANSWER)).difference(CHLIST_REQ_MANUAL_ANSWER) == set()):
             raise ValueError('!ERROR: <GUI> Found not all keywords of manual answer')
+
+    def remove_all(self):
+        layout = self.__central_layout
+        for i in reversed(range(layout.count())):
+            layout.itemAt(i).widget().setParent(None)
 
     def append(self, dict_gui_property):
         # self._validate(dict_gui_property)
@@ -147,20 +153,20 @@ class GuiProtocol(object):
         spacer_horizontal = QtGui.QSpacerItem(20, 0, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
         horizontal_group.addSpacerItem(spacer_horizontal)
 
-    def _add_tabs(self, tab_name):
+    def _init_tabs(self):
         cw = self.__window.ui.centralwidget
-        self._tabs = QtGui.QTabWidget(cw)
-        centralLayout = QtGui.QVBoxLayout(cw)
-        centralLayout.setObjectName("verticalLayout")
+        centralLayout = self.__window.ui.verticalLayout_CentralWidget
         # sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Expanding)
         # sizePolicy.setHorizontalStretch(0)
         # sizePolicy.setVerticalStretch(0)
         # sizePolicy.setHeightForWidth(self._tabs.sizePolicy().hasHeightForWidth())
         # self._tabs.setSizePolicy(sizePolicy)
+        self._tabs = QtGui.QTabWidget(cw)
         self._tabs.setMinimumSize(QtCore.QSize(965, 0))
         self._tabs.setObjectName("tabWidget")
 
         centralLayout.addWidget(self._tabs, 0)
+        return centralLayout
 
     def _add_page(self, dict_page) -> tuple:
         tab = QtGui.QWidget()

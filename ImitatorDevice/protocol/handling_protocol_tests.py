@@ -4,8 +4,8 @@ import re
 import sys
 
 import yaml
-from ImitatorDevice.protocol.tools_parse_yaml_protocol import str_hex2byte
 from ImitatorDevice.protocol.handling_protocol import HandlingProtocol
+from tools_binary import str_hex2byte
 
 
 def load_conf_test(filename):

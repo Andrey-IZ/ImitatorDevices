@@ -43,15 +43,23 @@ class MainForm(QtGui.QMainWindow):
         # XStream.stderr().messageWritten.connect(self.add_log_err)
         XStream.stdout().messageWritten.connect(self.add_log)
 
-        self.__reload_config()
+        self.__init_config()
         self.__init_connect()
+
+    def __init_config(self):
+        self.gui_protocol = GuiProtocol(self.log, self)
+        self.__parse_config()
+        self.__init_gui_form()
+        self.__init_servers(self.settings_conf)
 
     def __init_servers(self, settings_conf):
         if settings_conf.socket_settings.host:
             socket_logger = copy.copy(self.log)
-            socket_logger.name = 'Socket'
+            socket_logger.name = settings_conf.socket_settings.socket_type_str
             self.server_socket = socket_server_start(settings_conf, socket_logger, self.gui_protocol.get_control_form())
             btn_start, btn_stop, grpb = self.ui.pushButtonStartNet, self.ui.pushButtonStopNet, self.ui.groupBox_Net
+            self.__notify_launch_server('server stopped: "{}"'.format(self.server_socket, str(
+                    self.server_socket.get_address())), btn_start, btn_stop, grpb, False)
             if self.server_socket:
                 self.__notify_launch_server('server start: "{}"'.format(self.server_socket, str(
                     self.server_socket.get_address())), btn_start, btn_stop, grpb, True)
@@ -103,11 +111,10 @@ class MainForm(QtGui.QMainWindow):
 
     def __reload_config(self):
         if hasattr(self, 'gui_protocol'):
+            self.gui_protocol.remove_all()
             del self.gui_protocol
-        self.gui_protocol = GuiProtocol(self.log, self)
-        self.__parse_config()
-        self.__init_gui_form()
-        self.__init_servers(self.settings_conf)
+
+        self.__init_config()
 
     def __init_connect_server(self, server):
         if server:
