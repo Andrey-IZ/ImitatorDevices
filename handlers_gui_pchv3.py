@@ -6,7 +6,7 @@ import random
 
 
 def handler_parser_pchv3(log, bytes_recv):
-    if len(bytes_recv) > 4:
+    if len(bytes_recv) >= 4:
         len_packet, code = struct.unpack('!2H', bytes_recv[:4])
         return len_packet + 2, code, bytes_recv
     return None
@@ -361,5 +361,40 @@ def handler_pchv3_set_control_adt7310(log, parsing_data, param_data) -> [bytes]:
             '+++ Команда: "Установить управление adt7310": Данные = {}'.format(data))
         return [__qt_create_packet({'value': code_resp, 'type': 'quint16'},
                                    {'value': bool(result), 'type': 'bool'})]
-    return []
+
+
+def handler_pchv3_set_temp_limit(log, parsing_data, param_data) -> [bytes]:
+    len_packet, code, bytes_recv = parsing_data
+    request_data, response_data, control_gui = param_data
+    code_req, code_resp = request_data
+    if code == code_req:
+        t_high = value_from_qt_bytes('quint8', bytes_recv[4:5])
+        t_crit = value_from_qt_bytes('quint8', bytes_recv[5:6])
+
+        log.info(
+            '+++ Команда: Установить Лимиты температуры": t_high = {}, t_crit = {}'.format(
+                t_high, t_crit))
+        return [__qt_create_packet({'value': code_resp, 'type': 'quint16'},
+                                   [{'value': t_high+1, 'type': 'quint8'},
+                                   {'value': t_crit-1, 'type': 'quint8'}])
+                ]
+
+
+def handler_pchv3_req_temp_limit(log, parsing_data, param_data) -> [bytes]:
+    len_packet, code, bytes_recv = parsing_data
+    request_data, response_data, control_gui = param_data
+    code_req, code_resp = request_data
+    if code == code_req:
+        t_high = random.randint(64, 100)
+        t_crit = random.randint(75, 100)
+
+        log.info(
+            '+++ Команда: Установить Лимиты температуры": t_high = {}, t_crit = {}'.format(
+                t_high, t_crit))
+        return [__qt_create_packet({'value': code_resp, 'type': 'quint16'},
+                                   [{'value': t_high, 'type': 'quint8'},
+                                   {'value': t_crit, 'type': 'quint8'}]
+                                  )]
+
+
 
