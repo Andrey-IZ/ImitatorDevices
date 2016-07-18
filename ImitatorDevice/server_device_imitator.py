@@ -2,7 +2,6 @@
 # -*- coding=utf-8 -*-
 
 from PyQt4 import QtCore
-import logging
 
 
 class WorkerThread(QtCore.QThread):

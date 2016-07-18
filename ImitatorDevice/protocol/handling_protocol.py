@@ -545,7 +545,7 @@ class HandlingProtocol(object):
 
                 return None
 
-    def __process_zip_response(self, param_data, param_info):
+    def __process_zip_response(self, log, param_data, param_info):
         list_resp, list_req, bytes_recv = param_data
         doc, order = param_info
         len_list_req = len(list_req)
@@ -554,7 +554,7 @@ class HandlingProtocol(object):
             if packet_request == bytes_recv:
                 write_data = list_resp[self.__count_req_zip_packet]
 
-                self._log.info(u'!INFO: Handling command: "{0}", order = {1}; '
+                log.info(u'!INFO: Handling command: "{0}", order = {1}; '
                                u'packet count = {2} of {3}'.format(doc, order, self.__count_req_zip_packet + 1,
                                                                    len_list_req))
 
@@ -566,7 +566,7 @@ class HandlingProtocol(object):
                     raise ValueError(
                         "Error at time processing generation response: doc = {}".format(doc))
             if self.__count_req_zip_packet > 0:
-                self._log.error(
+                log.error(
                     u'!ERROR: Divergence protocol command\'s: command="{0}",'
                     u'line_packet="{1}"'.format(
                         doc, self.__count_req_zip_packet + 1))
@@ -574,7 +574,7 @@ class HandlingProtocol(object):
             return None
         return None
 
-    def __process_semiduplex_response(self, param_data, param_info):
+    def __process_semiduplex_response(self, log, param_data, param_info):
         list_resp, list_req, bytes_recv = param_data
         doc, order = param_info
         len_list_req = len(list_req)
@@ -583,7 +583,7 @@ class HandlingProtocol(object):
             if packet_request == bytes_recv:
                 write_data = list_resp[self.__count_req_semiduplex_packet]
 
-                self._log.info(u'!INFO: Handling command: "{0}", order = {1}; '
+                log.info(u'!INFO: Handling command: "{0}", order = {1}; '
                                u'packet count = {2} of {3}'.format(doc, order, self.__count_req_semiduplex_packet + 1,
                                                                    len_list_req))
                 if write_data is not None:
@@ -598,7 +598,7 @@ class HandlingProtocol(object):
                     raise ValueError(
                         "Error at time processing generation response: doc = {}".format(doc))
             if self.__count_req_semiduplex_packet > 0:
-                self._log.error(
+                log.error(
                     u'!ERROR: Divergence protocol command\'s: command="{0}",'
                     u'line_packet="{1}"'.format(
                         doc, self.__count_req_semiduplex_packet + 1))
@@ -650,14 +650,14 @@ class HandlingProtocol(object):
             elif order == "zip" and self.__count_req_zip_packet >= 0 and \
                             self.__count_req_generator_packet == 0 and self.__count_req_semiduplex_packet == 0:
                 list_resp = cmd[2]
-                result = self.__process_zip_response((list_resp, list_req, bytes_recv), (doc, order))
+                result = self.__process_zip_response(logger, (list_resp, list_req, bytes_recv), (doc, order))
                 if result:
                     self.__delay_response(logger, delay)
                     return result
             elif order == "semiduplex" and self.__count_req_semiduplex_packet >= 0 and \
                             self.__count_req_generator_packet == 0 and self.__count_req_zip_packet == 0:
                 list_resp = cmd[2]
-                result = self.__process_semiduplex_response((list_resp, list_req, bytes_recv), (doc, order))
+                result = self.__process_semiduplex_response(logger, (list_resp, list_req, bytes_recv), (doc, order))
                 if result is not None:
                     self.__delay_response(logger, delay)
                     return result
