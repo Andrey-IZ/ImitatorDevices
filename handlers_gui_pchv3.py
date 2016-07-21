@@ -368,15 +368,17 @@ def handler_pchv3_set_temp_limit(log, parsing_data, param_data) -> [bytes]:
     request_data, response_data, control_gui = param_data
     code_req, code_resp = request_data
     if code == code_req:
-        t_high = value_from_qt_bytes('quint8', bytes_recv[4:5])
-        t_crit = value_from_qt_bytes('quint8', bytes_recv[5:6])
+        t_low = value_from_qt_bytes('quint8', bytes_recv[4:5])
+        t_high = value_from_qt_bytes('quint8', bytes_recv[5:6])
+        t_crit = value_from_qt_bytes('quint8', bytes_recv[6:7])
 
         log.info(
-            '+++ Команда: Установить Лимиты температуры": t_high = {}, t_crit = {}'.format(
-                t_high, t_crit))
+            '+++ Команда: Установить Лимиты температуры": t_low = {}, t_high = {}, t_crit = {}'.format(
+                t_low, t_high, t_crit))
         return [__qt_create_packet({'value': code_resp, 'type': 'quint16'},
-                                   [{'value': t_high+1, 'type': 'quint8'},
-                                   {'value': t_crit-1, 'type': 'quint8'}])
+                                   [{'value': t_low+1, 'type': 'quint8'},
+                                    {'value': t_high+1, 'type': 'quint8'},
+                                    {'value': t_crit-1, 'type': 'quint8'}])
                 ]
 
 
@@ -385,15 +387,17 @@ def handler_pchv3_req_temp_limit(log, parsing_data, param_data) -> [bytes]:
     request_data, response_data, control_gui = param_data
     code_req, code_resp = request_data
     if code == code_req:
+        t_low = random.randint(56, 100)
         t_high = random.randint(64, 100)
         t_crit = random.randint(75, 100)
 
         log.info(
-            '+++ Команда: Установить Лимиты температуры": t_high = {}, t_crit = {}'.format(
-                t_high, t_crit))
+            '+++ Команда: Установить Лимиты температуры": t_low = {}, t_high = {}, t_crit = {}'.format(
+                t_low, t_high, t_crit))
         return [__qt_create_packet({'value': code_resp, 'type': 'quint16'},
-                                   [{'value': t_high, 'type': 'quint8'},
-                                   {'value': t_crit, 'type': 'quint8'}]
+                                   [{'value': t_low, 'type': 'quint8'},
+                                    {'value': t_high, 'type': 'quint8'},
+                                    {'value': t_crit, 'type': 'quint8'}]
                                   )]
 
 
