@@ -225,6 +225,9 @@ class HandlingProtocol(object):
         self.__list_emit_send[CH_ESTRIGGER_CON][1].clear()
         self.__list_emit_send[CH_ESTRIGGER_CON][2].clear()
 
+        self.__dict_compile_read.clear()
+        self.__list_gen_full.clear()
+
     def __process_full_generate_response_with_parser(self, logger, bytes_recv, control_gui=None):
         if not self.__handler_dict_parser:
             return None
