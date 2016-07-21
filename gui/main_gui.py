@@ -3,6 +3,7 @@ from PyQt4 import QtGui, uic
 from PyQt4.Qt import *
 
 from gui.gui_tools.gui_protocol import GuiProtocol
+from gui.gui_tools.reload_gui import GuiReload, GuiControlsReload
 from gui.main_window_ui import Ui_MainWindow
 from gui.gui_tools.fill_control.fill_control_serial import FillControlSerial
 from gui.gui_tools.fill_control.fill_control_socket import FillControlSocket
@@ -32,6 +33,7 @@ class MainForm(QtGui.QMainWindow):
         self.file_conf = file_conf
         self.server_serial = None
         self.server_socket = None
+        self.__is_init_server = True
         self.settings_conf = settings_conf
         self.params = params
         self.pattern_log = re.compile(
@@ -48,51 +50,59 @@ class MainForm(QtGui.QMainWindow):
 
     def __init_config(self):
         self.gui_protocol = GuiProtocol(self.log, self)
-        self.__parse_config()
-        self.__init_gui_form()
-        self.__init_servers(self.settings_conf)
+        gui_controls_reload = GuiControlsReload()
+        gui_controls_reload.gui_protocol = self.gui_protocol
+        gui_controls_reload.file_config = self.file_conf
+        gui_controls_reload.params_console = self.params
+        gui_controls_reload.settings_conf = self.settings_conf
+        gui_controls_reload.is_init_server = self.__is_init_server
+        gui_controls_reload.fill_control_param.update(
+            {'socket': (self.ui.spinBox_Port_Bind, self.ui.lineEditIpAddressBind)})
+        gui_controls_reload.fill_control_param.update({'serial': (self.ui.comboBox_ListPorts, self.ui.comboBox_BaudRate,
+                                                                  self.ui.comboBox_DataBits, self.ui.comboBox_StopBits,
+                                                                  self.ui.comboBox_Parity)})
+        self.gui_reload = GuiReload(self.log, gui_controls_reload)
+        self.gui_reload.sig_status_thread.connect(self.__set_btn_reload)
+        self.gui_reload.sig_status_thread.connect(self.__set_enable_form)
+        self.gui_reload.sig_job_finished.connect(self.__init_servers)
+        self.gui_reload.sig_job_finished.connect(self.__rebuild_frame)
+        self.gui_reload.sig_job_finished.connect(self.__reset_highlight)
+        self.gui_reload.start()
 
-    def __init_servers(self, settings_conf):
-        if settings_conf.socket_settings.host:
-            socket_logger = copy.copy(self.log)
-            socket_logger.name = settings_conf.socket_settings.socket_type_str
-            self.server_socket = socket_server_start(settings_conf, socket_logger, self.gui_protocol.get_control_form())
-            btn_start, btn_stop, grpb = self.ui.pushButtonStartNet, self.ui.pushButtonStopNet, self.ui.groupBox_Net
-            self.__notify_launch_server('server stopped: "{}"'.format(self.server_socket, str(
+    def __rebuild_frame(self, status):
+        if status:
+            self.gui_protocol.build_form()
+
+    def __init_servers(self):
+        if self.__is_init_server:
+            settings_conf = self.settings_conf
+            if settings_conf.socket_settings.host:
+                socket_logger = copy.copy(self.log)
+                socket_logger.name = settings_conf.socket_settings.socket_type_str
+                self.server_socket = socket_server_start(settings_conf, socket_logger,
+                                                         self.gui_protocol.get_control_form())
+                btn_start, btn_stop, grpb = self.ui.pushButtonStartNet, self.ui.pushButtonStopNet, self.ui.groupBox_Net
+                self.__notify_launch_server('server stopped: "{}"'.format(self.server_socket, str(
                     self.server_socket.get_address())), btn_start, btn_stop, grpb, False)
-            if self.server_socket:
-                self.__notify_launch_server('server start: "{}"'.format(self.server_socket, str(
-                    self.server_socket.get_address())), btn_start, btn_stop, grpb, True)
-        else:
-            self.ui.dockWidget_Net.setVisible(False)
-        if settings_conf.serialport_settings.port:
-            btn_start, btn_stop, grpb = self.ui.pushButtonStart_Serial, self.ui.pushButtonStop_Serial, self.ui.groupBox_Serial
-            serial_logger = copy.copy(self.log)
-            serial_logger.name = 'Serial'
-            self.server_serial = serial_server_start(settings_conf, serial_logger, self.gui_protocol.get_control_form())
-            if self.server_serial:
-                self.__notify_launch_server('server start: "{}"'.format(self.server_serial, str(
-                    self.server_serial.get_address())), btn_start, btn_stop, grpb, True)
-        else:
-            self.ui.dockWidget_Serial.setVisible(False)
+                if self.server_socket:
+                    self.__notify_launch_server('server start: "{}"'.format(self.server_socket, str(
+                        self.server_socket.get_address())), btn_start, btn_stop, grpb, True)
+            else:
+                self.ui.dockWidget_Net.setVisible(False)
+            if settings_conf.serialport_settings.port:
+                btn_start, btn_stop, grpb = self.ui.pushButtonStart_Serial, self.ui.pushButtonStop_Serial, self.ui.groupBox_Serial
+                serial_logger = copy.copy(self.log)
+                serial_logger.name = 'Serial'
+                self.server_serial = serial_server_start(settings_conf, serial_logger,
+                                                         self.gui_protocol.get_control_form())
+                if self.server_serial:
+                    self.__notify_launch_server('server start: "{}"'.format(self.server_serial, str(
+                        self.server_serial.get_address())), btn_start, btn_stop, grpb, True)
+            else:
+                self.ui.dockWidget_Serial.setVisible(False)
 
-    def __parse_config(self):
-        self.log.info("Parsing configuration file: {}".format(self.file_conf))
-        try:
-            stat = self.settings_conf.parse(self.file_conf, self.gui_protocol)
-            if self.params.is_show_stat:
-                self.log.info("Results parsing file {}:".format(self.file_conf) + stat)
-        except Exception as err:
-            self.log.error('>>> {}'.format(err))
-            raise Exception(err) from err
-
-    def __init_gui_form(self):
-        control_socket = FillControlSocket(self.log, self.settings_conf.socket_settings)
-        control_socket.init_controls(self.ui.spinBox_Port_Bind, self.ui.lineEditIpAddressBind)
-
-        control_serial = FillControlSerial(self.log, self.settings_conf.serialport_settings)
-        control_serial.init_controls(self.ui.comboBox_ListPorts, self.ui.comboBox_BaudRate,
-                                     self.ui.comboBox_DataBits, self.ui.comboBox_StopBits, self.ui.comboBox_Parity)
+    def __reset_highlight(self):
+         self._set_highlight_button(self.ui.pushButtonReloadConfig)
 
     def __init_connect(self):
         self.ui.pushButtonReloadConfig.clicked.connect(self.__reload_config)
@@ -112,9 +122,15 @@ class MainForm(QtGui.QMainWindow):
     def __reload_config(self):
         if hasattr(self, 'gui_protocol'):
             self.gui_protocol.remove_all()
-            del self.gui_protocol
+            # del self.gui_protocol
+        # if self.server_socket:
+        #     self.stop_server(self.server_socket)
+        # if self.server_serial:
+        #     self.stop_server(self.server_serial)
 
-        self.__init_config()
+        self.__is_init_server = False
+        self.gui_reload.controls_reload.is_init_server = self.__is_init_server
+        self.gui_reload.start()
 
     def __init_connect_server(self, server):
         if server:
@@ -168,38 +184,6 @@ class MainForm(QtGui.QMainWindow):
         if server:
             server.stop()
 
-    def parse_values_of_form(self):
-        dict_values_work_ak = {}
-        is_include_techno_ak, is_answer_with_type_cmd = True, True
-
-        if not is_answer_with_type_cmd:
-            dict_values_work_ak['BSB'] = self.ui.spinBox_BSB.value()
-            dict_values_work_ak['R_W'] = self.ui.spinBox_R_W.value()
-            dict_values_work_ak['OM'] = self.ui.spinBox_OM.value()
-
-        if not self.ui.checkBox_Replace_Betta.isChecked():
-            dict_values_work_ak['not_replace_betta'] = True
-
-        # Рабочий АК
-        dict_values_work_ak['betta_degree'] = self.ui.doubleSpinBox_Betta.value()
-        dict_values_work_ak['readiness'] = self.ui.spinBox_Readhiness.value()
-        dict_values_work_ak['RPon'] = self.ui.spinBox_RPon.value()
-        dict_values_work_ak['ZPst'] = self.ui.spinBox_ZPst.value()
-        dict_values_work_ak['OPst'] = self.ui.spinBox_OPst.value()
-        dict_values_work_ak['LockDv'] = self.ui.spinBox_LockDv.value()
-        dict_values_work_ak['ROP'] = self.ui.spinBox_ROP.value()
-        dict_values_work_ak['KZOB'] = self.ui.spinBox_KZ_OB.value()
-        dict_values_work_ak['Mode'] = self.ui.spinBox_Mode.value()
-        dict_values_work_ak['AKA_IP4'] = self.ui.spinBox_AKA_IP4.value()
-        dict_values_work_ak['AKA_IP3'] = self.ui.spinBox_AKA_IP3.value()
-        dict_values_work_ak['AKA_IP2'] = self.ui.spinBox_AKA_IP2.value()
-        dict_values_work_ak['AKA_IP1'] = self.ui.spinBox_AKA_IP1.value()
-
-        dict_values_techno_ak = {}
-        self.sig_reply_req_values_form.emit(dict_values_work_ak)
-        self.log.warning('Warning')
-        return
-
     def add_log_from(self, dict_values_ak, list_values_ak_keys, list_values_ak_title_rus, num):
         fmt_str = str(self.udp_server.get_prefix_recv) + " [" + str(num) + "]" + ": "
         # fmt_str = u" [" + unicode(num) + u"]" + u": "
@@ -211,8 +195,8 @@ class MainForm(QtGui.QMainWindow):
             list_values.append(dict_values_ak.get(x))
         try:
             fmt_str = fmt_str.format(*list_values)
-        except Exception as e:
-            print('Error format: ' + e.message)
+        except Exception as err:
+            print('Error format: {}', err)
 
         self.ui.plainTextEdit_log.appendPlainText(fmt_str)
 
@@ -247,11 +231,29 @@ class MainForm(QtGui.QMainWindow):
         btn_start.setEnabled(not server_is_running)
         btn_stop.setEnabled(server_is_running)
         if server_is_running:
-            btn_start.setStyleSheet('background-color: rgb(0, 255, 0);')
-            btn_stop.setStyleSheet('')
+            self._set_highlight_button(btn_start, True)
+            self._set_highlight_button(btn_stop, None)
         else:
-            btn_stop.setStyleSheet('background-color: rgb(255, 0, 0);')
-            btn_start.setStyleSheet('')
+            self._set_highlight_button(btn_stop, False)
+            self._set_highlight_button(btn_start, None)
+
+    def __set_btn_reload(self, status):
+        if status is None:
+            status = False
+        self._set_highlight_button(self.ui.pushButtonReloadConfig, status)
+
+    @staticmethod
+    def _set_highlight_button(button, status=None):
+        if status:
+            button.setStyleSheet('background-color: rgb(0, 255, 0);')
+        elif status is None:
+            button.setStyleSheet('')
+        else:
+            button.setStyleSheet('background-color: rgb(255, 0, 0);')
+
+    def __set_enable_form(self, is_enabled):
+        self.ui.pushButtonReloadConfig.setEnabled(bool(is_enabled))
+        # self.ui.centralwidget.setEnabled(is_enabled)
 
 
 def start_server_gui(logger, params, settings_conf, file_conf):

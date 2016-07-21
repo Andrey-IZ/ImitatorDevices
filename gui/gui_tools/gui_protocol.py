@@ -77,7 +77,7 @@ class GuiProtocol(object):
         self.__default_group_dict = {KW_GUI_NAME: 'group', KW_GUI_ROW: 0, KW_GUI_COLUMN: 0,
                                      KW_GUI_COLSPAN: 1, KW_GUI_ROWSPAN: 1, KW_FIELDS: [], KW_GUI_REF: None}
         self.__default_page_dict = {KW_GUI_NAME: 'page1', KW_GROUPS: [], KW_GUI_REF: None}
-        self.__central_layout = self._init_tabs()
+        self.__central_layout = None
 
     @property
     def logger(self) -> Logger:
@@ -104,47 +104,64 @@ class GuiProtocol(object):
 
     def remove_all(self):
         layout = self.__central_layout
+        self.__dict_gui_ctrl.clear()
         for i in reversed(range(layout.count())):
             layout.itemAt(i).widget().setParent(None)
 
     def append(self, dict_gui_property):
-        # self._validate(dict_gui_property)
+        # if self._validate(dict_gui_property):
         for page in dict_gui_property.get(KW_PAGES, []):
             dict_page = copy.copy(self.__default_page_dict)
             dict_page.update(page)
             _page_dict = {}
-            _page = self._add_page(dict_page)
-            _page_dict[KW_GUI_REF] = _page[0]
-            _page_dict[KW_GUI_HLAYOUT] = _page[1]
-            _page_dict[KW_GUI_VLAYOUT] = _page[2]
 
             dict_group = {}
-            for group in dict_page.get(KW_GROUPS, []):
+            for group in dict_page.get(KW_GROUPS, {}):
                 copy_group = copy.copy(self.__default_group_dict)
                 copy_group.update(group)
-                _groupbox = self._add_groupbox(_page, copy_group)
-                list_field = {}
-                for field in copy_group.get(KW_FIELDS, []):
+                list_field = self.__dict_gui_ctrl.get(page.get(KW_GUI_NAME, {}), {}).get(KW_GROUPS, {}).get(
+                    group.get(KW_GUI_NAME, {}), {}).get(KW_FIELDS, {})
+                for field in copy_group.get(KW_FIELDS, {}):
                     if field.get(KW_GUI_CONTROL_TYPE) == KW_FIELD_SPINBOX:
                         copy_field = copy.copy(self.__default_field_dict_spinbox)
                         copy_field.update(field)
-                        copy_field[KW_GUI_REF] = self._add_spinbox(_groupbox, copy_field)
                     elif field.get(KW_GUI_CONTROL_TYPE) == KW_FIELD_CHECKBOX:
                         copy_field = copy.copy(self.__default_field_dict_checkbox)
                         copy_field.update(field)
-                        copy_field[KW_GUI_REF] = self._add_checkbox(_groupbox, copy_field)
                     elif field.get(KW_GUI_CONTROL_TYPE) == KW_FIELD_COMBOBOX:
                         copy_field = copy.copy(self.__default_field_dict_combobox)
                         copy_field.update(field)
-                        copy_field[KW_GUI_REF] = self._add_combobox(_groupbox, copy_field)
 
                     list_field[copy_field.get(KW_GUI_NAME)] = copy_field
-                self._post_groupbox(_groupbox)
                 copy_group[KW_FIELDS] = list_field
                 dict_group[copy_group.get(KW_GUI_NAME)] = copy_group
 
             _page_dict[KW_GROUPS] = dict_group
             self.__dict_gui_ctrl[dict_page.get(KW_GUI_NAME)] = _page_dict
+        return self.__dict_gui_ctrl
+
+    def build_form(self):
+        self.__central_layout = self._init_tabs()
+        for page_name, page in self.__dict_gui_ctrl.items():
+            _page = self._add_page(page_name)
+            page[KW_GUI_REF] = _page[0]
+            page[KW_GUI_HLAYOUT] = _page[1]
+            page[KW_GUI_VLAYOUT] = _page[2]
+
+            for group in page.get(KW_GROUPS, {}).values():
+                _groupbox = self._add_groupbox(_page, group)
+                group[KW_GUI_REF] = _groupbox[0]
+                group[KW_GUI_HLAYOUT] = _groupbox[1]
+                group[KW_GUI_VLAYOUT] = _groupbox[2]
+                for field in group.get(KW_FIELDS, {}).values():
+                    if field.get(KW_GUI_CONTROL_TYPE) == KW_FIELD_SPINBOX:
+                        field[KW_GUI_REF] = self._add_spinbox(_groupbox, field)
+                    elif field.get(KW_GUI_CONTROL_TYPE) == KW_FIELD_CHECKBOX:
+                        field[KW_GUI_REF] = self._add_checkbox(_groupbox, field)
+                    elif field.get(KW_GUI_CONTROL_TYPE) == KW_FIELD_COMBOBOX:
+                        field[KW_GUI_REF] = self._add_combobox(_groupbox, field)
+
+                self._post_groupbox(_groupbox)
 
     def _post_groupbox(self, groupbox):
         groupbox, horizontal_group, vertical_group = groupbox
@@ -161,6 +178,7 @@ class GuiProtocol(object):
         # sizePolicy.setVerticalStretch(0)
         # sizePolicy.setHeightForWidth(self._tabs.sizePolicy().hasHeightForWidth())
         # self._tabs.setSizePolicy(sizePolicy)
+
         self._tabs = QtGui.QTabWidget(cw)
         self._tabs.setMinimumSize(QtCore.QSize(965, 0))
         self._tabs.setObjectName("tabWidget")
@@ -168,10 +186,9 @@ class GuiProtocol(object):
         centralLayout.addWidget(self._tabs, 0)
         return centralLayout
 
-    def _add_page(self, dict_page) -> tuple:
+    def _add_page(self, page_name) -> tuple:
         tab = QtGui.QWidget()
         vertical = QtGui.QVBoxLayout(tab)
-        page_name = dict_page.get(KW_GUI_NAME)
         tab.setObjectName(page_name)
         self._tabs.addTab(tab, page_name)
         self._tabs.setTabText(self._tabs.indexOf(tab), page_name)
