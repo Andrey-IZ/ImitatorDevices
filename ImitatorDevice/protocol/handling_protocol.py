@@ -412,8 +412,21 @@ class HandlingProtocol(object):
         "ZIP" =         {zip_amount}: {zip_list}
         "SEMIDUPLEX" =  {semiduplex_amount}: {semiduplex_list}
         "GENERATOR" =   {generator_amount}: {generator_list}
-        "GENERATOR-FULL" =   {generator_full_amount}: {generator_full_list}
+        "GENERATOR-FULL" =   {generator_full_amount}:
+            Parser = {generator_full_parser}
+            List functions = {generator_full_list}
+        "FUNCS WITH DELAY" = {len_list_func_with_delay}: {list_func_with_delay}
         '''.replace('\n        ', '\n')
+        dict_func_with_delay = {'GENERATOR-FULL': [(item[3], item[6]) for item in self.__list_gen_full
+                                                   if item[6] is not None and item[6] > 0],
+                                'GENERATOR': [(item[3], item[5]) for item in self.__lists_protocol
+                                              if item[0] == CH_ORDER_GENERATOR and item[6] is not None and item[6] > 0],
+                                'ZIP': [(item[3], item[5]) for item in self.__lists_protocol
+                                        if item[0] == CH_ORDER_ZIP and item[5] is not None and item[5] > 0],
+                                'SEMIDUPLEX': [(item[3], item[5]) for item in self.__lists_protocol
+                                               if
+                                               item[0] == CH_ORDER_SEMIDUPLEX and item[5] is not None and item[5] > 0]
+                                }
         results = {'zip_list': [(item[3], (item[5], item[4])) for item in self.__lists_protocol
                                 if item[0] == CH_ORDER_ZIP],
                    'zip_amount': len([item[3] for item in self.__lists_protocol
@@ -428,15 +441,18 @@ class HandlingProtocol(object):
                                             if item[0] == CH_ORDER_GENERATOR]),
                    'generator_full_list': [(item[3], (item[6], item[5])) for item in self.__list_gen_full],
                    'generator_full_amount': len([item[3] for item in self.__list_gen_full]),
+                   'generator_full_parser': self.__handler_dict_parser,
                    'emit_con_list': list(zip([item[0] for item in self.__list_emit_send[CH_ESTRIGGER_CON][1]],
                                              [item for item in self.__list_emit_send[CH_ESTRIGGER_CON][2]])),
                    'emit_con_amount': len([item[0] for item in self.__list_emit_send[CH_ESTRIGGER_CON][1]]),
                    'emit_timeout_list': list(zip([item[2] for item in self.__list_emit_send[CH_ESTRIGGER_TIMEOUT][0]],
                                                  [item for item in self.__list_emit_send[CH_ESTRIGGER_TIMEOUT][2]])),
                    'emit_timeout_amount': len([item[2] for item in self.__list_emit_send[CH_ESTRIGGER_TIMEOUT][0]]),
+                   'list_func_with_delay': [(key, value) for key, value in dict_func_with_delay.items()
+                                            if value],
+                   'len_list_func_with_delay': len([(key, value) for key, value in dict_func_with_delay.items()
+                                                    if value]),
                    }
-        # self.__lists_protocol
-        # self.__list_emit_send[CH_ESTRIGGER_CON][1].append([doc, order])
         return s.format(**results)
 
     def __post_parse_init(self):
@@ -558,8 +574,8 @@ class HandlingProtocol(object):
                 write_data = list_resp[self.__count_req_zip_packet]
 
                 log.info(u'!INFO: Handling command: "{0}", order = {1}; '
-                               u'packet count = {2} of {3}'.format(doc, order, self.__count_req_zip_packet + 1,
-                                                                   len_list_req))
+                         u'packet count = {2} of {3}'.format(doc, order, self.__count_req_zip_packet + 1,
+                                                             len_list_req))
 
                 self.__count_req_zip_packet = self.__increment_counter(self.__count_req_zip_packet, len_list_req)
 
@@ -587,8 +603,8 @@ class HandlingProtocol(object):
                 write_data = list_resp[self.__count_req_semiduplex_packet]
 
                 log.info(u'!INFO: Handling command: "{0}", order = {1}; '
-                               u'packet count = {2} of {3}'.format(doc, order, self.__count_req_semiduplex_packet + 1,
-                                                                   len_list_req))
+                         u'packet count = {2} of {3}'.format(doc, order, self.__count_req_semiduplex_packet + 1,
+                                                             len_list_req))
                 if write_data is not None:
                     if self.__count_req_semiduplex_packet == len_list_req - 1:
                         self.__count_req_semiduplex_packet = 0
