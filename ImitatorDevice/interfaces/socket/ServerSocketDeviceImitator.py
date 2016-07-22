@@ -136,16 +136,7 @@ class ServerSocketDeviceimitator(ThreadServerDeviceImitator):
                         print(text)
                         self.log.debug(text + '\n')
                     else:  # ********** handling packets ******************
-                        self.log.info("======================================")
-                        self.log.info("-> recv: {} from {}".format(byte2hex_str(data_recv), addr))
-
-                        list_packets = self.handler_response(data_recv)
-                        if list_packets:
-                            for packet in list_packets:
-                                if packet:
-                                    self.log.info("<- send: {} to {}".format(byte2hex_str(packet), addr),
-                                                     extra=self.log_var)
-                                    self.socket.sendto(packet, addr)
+                        self.__process_packet_udp(addr, data_recv)
         except socket.error as err:
             exc_str = "!ERROR: Something else happened on write to socket"
             self.log.error(exc_str)
@@ -161,6 +152,17 @@ class ServerSocketDeviceimitator(ThreadServerDeviceImitator):
         finally:
             self.socket.shutdown(socket.SHUT_RD)
             self.socket.close()
+
+    def __process_packet_udp(self, addr, data_recv):
+        self.log.info("======================================")
+        self.log.info("-> recv: {} from {}".format(byte2hex_str(data_recv), addr))
+        list_packets = self.handler_response(self.log, data_recv, self.__control_gui)
+        if list_packets:
+            for packet in list_packets:
+                if packet:
+                    self.log.info("<- send: {} to {}".format(byte2hex_str(packet), addr),
+                                  extra=self.log_var)
+                    self.socket.sendto(packet, addr)
 
     def _reader_tcp(self):
         """loop forever and handling packets protocol"""
@@ -208,7 +210,7 @@ class ServerSocketDeviceimitator(ThreadServerDeviceImitator):
                                 if not data_recv:
                                     break
                                 else:
-                                    self.__process_packet(client, data_recv)
+                                    self.__process_packet_tcp(client, data_recv)
                 except socket.error as err:
                     if err.args[0] == errno.WSAECONNABORTED:
                         self.log.error('!Error: Connection abort from {}: {}'.format(addr, err.args[1]))
@@ -235,7 +237,7 @@ class ServerSocketDeviceimitator(ThreadServerDeviceImitator):
             # self.socket.shutdown(socket.SHUT_RD)
             self.socket.close()
 
-    def __process_packet(self, client, data_recv):
+    def __process_packet_tcp(self, client, data_recv):
         self.log.warning("======================================")
         self.log.warning("-> recv: {}".format((byte2hex_str(data_recv))))
         list_packets = self.handler_response(self.log, data_recv, self.__control_gui)
