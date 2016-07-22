@@ -2,13 +2,12 @@
 # -*- coding: utf-8 -*-
 
 
-import sys
-import os.path
-
-from ImitatorDevice.serial.ServerSerialDeviceImitator import *
-from ImitatorDevice.socket.ServerSocketDeviceImitator import *
-from ImitatorDevice.protocol.handling_protocol import GuiUsedException
 import copy
+import sys
+
+from ImitatorDevice.interfaces.serial.ServerSerialDeviceImitator import serial_server_start, SerialDeviceException
+from ImitatorDevice.interfaces.socket.ServerSocketDeviceImitator import *
+from ImitatorDevice.protocol.handling_protocol import GuiUsedException
 
 
 def start_server_cli(logger, params, settings_conf, file_conf):

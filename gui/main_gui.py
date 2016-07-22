@@ -1,17 +1,16 @@
+import copy
+import re
 import sys
+
 from PyQt4 import QtGui, uic
 from PyQt4.Qt import *
 
+from ImitatorDevice.interfaces.serial.ServerSerialDeviceImitator import serial_server_start, ServerSerialDeviceimitator
+from ImitatorDevice.interfaces.socket.ServerSocketDeviceImitator import socket_server_start, ServerSocketDeviceimitator
 from gui.gui_tools.gui_protocol import GuiProtocol
 from gui.gui_tools.reload_gui import GuiReload, GuiControlsReload
 from gui.main_window_ui import Ui_MainWindow
-from gui.gui_tools.fill_control.fill_control_serial import FillControlSerial
-from gui.gui_tools.fill_control.fill_control_socket import FillControlSocket
-from ImitatorDevice.socket.ServerSocketDeviceImitator import socket_server_start, ServerSocketDeviceimitator
-from ImitatorDevice.serial.ServerSerialDeviceImitator import serial_server_start, ServerSerialDeviceimitator
 from gui.qt_logging import XStream
-import copy
-import re
 
 
 class MainForm(QtGui.QMainWindow):
