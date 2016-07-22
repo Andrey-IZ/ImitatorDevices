@@ -86,12 +86,13 @@ class GuiReload(QtCore.QThread):
     def run(self):
         self.__running = True
         self.__log.qthread_name = self.__thread_name
-        self.__log.system('***** RELOAD *******')
+        self.__log.system('************* INIT ******************************')
         self.sig_status_thread.emit(True)
         success = self._do_work()
         self.sig_status_thread.emit(success)
         self.__log.system('Reload is finished'.format(self.__log.qthread_name))
         self.sig_job_finished.emit(bool(success))
+        self.__log.system('************************************************')
 
     def stop(self):
         self.__running = False

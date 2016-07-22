@@ -3,6 +3,8 @@
 
 import errno
 import socket
+
+from ImitatorDevice.protocol.handling_protocol import HandlingProtocol
 from ImitatorDevice.server_device_imitator import ThreadServerDeviceImitator
 from tools_binary import byte2hex_str
 
@@ -36,13 +38,11 @@ class ServerSocketDeviceimitator(ThreadServerDeviceImitator):
     """
     """
 
-    def __init__(self, settings_conf, logger, control_gui=None, buffer_size=1024):
+    def __init__(self, settings_conf: HandlingProtocol, logger, control_gui=None, buffer_size=1024):
         super(ServerSocketDeviceimitator, self).__init__(logger)
         self.buffer_size = buffer_size
         self.socket = None
         self.__control_gui = control_gui
-        self.is_emit_send_on_connect = settings_conf.is_emit_send_on_connect
-        self.is_emit_send_on_timeout = settings_conf.is_emit_send_on_timeout
         self.handler_response = settings_conf.handler_response
         self.socket_settings = settings_conf.socket_settings
         self.handler_emit_send = settings_conf.handler_emit_send
@@ -174,21 +174,19 @@ class ServerSocketDeviceimitator(ThreadServerDeviceImitator):
                     else:  # данные есть
                         self.log.error('Connecting client from: {}'.format(addr))
                         client.setblocking(0)  # снимаем блокировку и тут тоже
-                        if self.is_emit_send_on_connect:
-                            for packet in self.handler_emit_send(self.log, self.__control_gui, is_connect=True):
-                                if packet:
-                                    client.send(packet)
-                                    self.log.warning("<- send: {}".format(byte2hex_str(packet)))
+                        for packet in self.handler_emit_send(self.log, self.__control_gui, is_connect=True):
+                            if packet:
+                                client.send(packet)
+                                self.log.warning("<- send: {}".format(byte2hex_str(packet)))
 
                         # если в блоке except вы выходите,
                         # ставить else и отступ не нужно
                         while self.running:
                             try:
-                                if self.is_emit_send_on_timeout:
-                                    for packet in self.handler_emit_send(self.log, self.__control_gui, is_timeout=True):
-                                        if packet:
-                                            client.send(packet)
-                                            self.log.warning("<- send <timeout>: {} ".format(byte2hex_str(packet)))
+                                for packet in self.handler_emit_send(self.log, self.__control_gui, is_timeout=True):
+                                    if packet:
+                                        client.send(packet)
+                                        self.log.warning("<- send <timeout>: {} ".format(byte2hex_str(packet)))
 
                                 data_recv = client.recv(self.buffer_size)
                             except socket.error as err:  # данных нет
