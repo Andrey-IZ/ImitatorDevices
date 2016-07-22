@@ -1,13 +1,14 @@
 #!/usr/bin/env python
 
-import time
 import os.path
 import sys
+import time
+
+from ImitatorDevice.interfaces.socket.socket_settings import SocketSettings
+from ImitatorDevice.interfaces.serial.serial_port_settings import SerialPortSettings
 from ImitatorDevice.protocol.tools_parse_yaml_protocol import load_handler, load_conf_test, str_dict_keys_lower, \
     load_handler_dynamic
 from tools_binary import str_hex2byte
-from ImitatorDevice.socket.socket_settings import SocketSettings
-from ImitatorDevice.serial.serial_port_settings import SerialPortSettings
 
 CH_ESTRIGGER_CON, CH_ESTRIGGER_TIMEOUT = ('on_connection', 'on_timeout')
 CH_ORDER_GENERATOR, CH_ORDER_ZIP, CH_ORDER_SEMIDUPLEX, CH_ORDER_GENERATOR_FULL = (
@@ -420,7 +421,7 @@ class HandlingProtocol(object):
         dict_func_with_delay = {'GENERATOR-FULL': [(item[3], item[6]) for item in self.__list_gen_full
                                                    if item[6] is not None and item[6] > 0],
                                 'GENERATOR': [(item[3], item[5]) for item in self.__lists_protocol
-                                              if item[0] == CH_ORDER_GENERATOR and item[6] is not None and item[6] > 0],
+                                              if item[0] == CH_ORDER_GENERATOR and item[5] is not None and item[5] > 0],
                                 'ZIP': [(item[3], item[5]) for item in self.__lists_protocol
                                         if item[0] == CH_ORDER_ZIP and item[5] is not None and item[5] > 0],
                                 'SEMIDUPLEX': [(item[3], item[5]) for item in self.__lists_protocol
