@@ -36,9 +36,16 @@ class MainForm(QtGui.QMainWindow):
         self.__is_init_server = True
         self.settings_conf = settings_conf
         self.params = params
-        self.pattern_log = re.compile(
+        self.__pattern_log_str = re.compile(r'(<.*?>[^<]+?)(".*?")', re.DOTALL)
+        self.__pattern_log_apostr = re.compile(r'(\'.*?\')', re.DOTALL)
+        self.__pattern_log_digit_msg = re.compile(r'(?<=[\W\s])([0-9]+)(?=[\W\s])')
+        self.__pattern_log_bool_msg = re.compile(r'(?<=[\W\s])((?:true)|(?:false))(?=[\W\s])', re.I)
+        self.__pattern_log_msg_text = re.compile(
+            r'(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3} &lt;[A-Z]&gt;'
+            r' \[\w+~.*?\]\s)(.*)', re.I | re.DOTALL)
+        self.__pattern_log = re.compile(
             r'(?P<date>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}) &lt;(?P<msg>[A-Z])&gt;'
-            r' \[(?P<log_name>\w+)~(?P<thread_name>.*?)\]\s.*?', re.I)
+            r' \[(?P<log_name>\w+)~(?P<thread_name>.*?)\]\s.*?', re.I | re.M)
         self.repl_str = r'<font color=gray>\g<date></font> &lt;<font color=red>\g<msg></font>&gt;' \
                         r' [<U>\g<log_name></U>~<font color="blue">\g<thread_name></font>] '
 
@@ -102,7 +109,7 @@ class MainForm(QtGui.QMainWindow):
                 self.ui.dockWidget_Serial.setVisible(False)
 
     def __reset_highlight(self):
-         self._set_highlight_button(self.ui.pushButtonReloadConfig)
+        self._set_highlight_button(self.ui.pushButtonReloadConfig)
 
     def __init_connect(self):
         self.ui.pushButtonReloadConfig.clicked.connect(self.__reload_config)
@@ -216,7 +223,21 @@ class MainForm(QtGui.QMainWindow):
         return self.model_log.rowCount()
 
     def add_log(self, fmt_str):
-        fmt_str = self.pattern_log.sub(self.repl_str, fmt_str.replace('<', '&lt;').replace('>', '&gt;'))
+        fmt_str = '<font color="Black">' + fmt_str.replace('<', '&lt;').replace('>', '&gt;') + '</font>'
+        m = self.__pattern_log_msg_text.search(fmt_str)
+        if m:
+            msg_text = m.group(2)
+            if msg_text:
+                repl_text = self.__pattern_log_digit_msg.sub(
+                    '<font color=#0000FF size=3 family="Times New Roman">\g<1></font>', msg_text)
+                fmt_str = self.__pattern_log_msg_text.sub('\g<1>' + repl_text, fmt_str)
+        fmt_str = self.__pattern_log_str.sub(
+            '\g<1><font color=#CC6A00 size=3 family="Times New Roman"><b>\g<2></b></font>', fmt_str)
+        fmt_str = self.__pattern_log_bool_msg.sub(
+            '<font color=#0000AA size=3 family="Times New Roman"><b>\g<1></b></font>', fmt_str)
+        fmt_str = self.__pattern_log_apostr.sub('<font color=#009A00 size=3 family="Times New Roman">\g<1></font>',
+                                                fmt_str)
+        fmt_str = self.__pattern_log.sub(self.repl_str, fmt_str)
         html_text = '<font color="Black" size=3 family="Times New Roman"><pre>{}</pre></font>'.format(fmt_str)
         self.ui.plainTextEdit_log.appendHtml(html_text)
 
