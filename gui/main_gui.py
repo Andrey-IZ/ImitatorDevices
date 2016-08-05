@@ -37,7 +37,7 @@ class MainForm(QtGui.QMainWindow):
         self.params = params
         self.__pattern_log_str = re.compile(r'(<.*?>[^<]+?)(".*?")', re.DOTALL)
         self.__pattern_log_apostr = re.compile(r'(\'.*?\')', re.DOTALL)
-        self.__pattern_log_digit_msg = re.compile(r'(?<=[\W\s])([0-9]+)(?=[\W\s])')
+        self.__pattern_log_digit_msg = re.compile(r'(?<=[\W\s])((?:[0-9]+)|(?:[0-9A-F]{2})|(?:[0-9A-F]{4}))(?=[\W\s])')
         self.__pattern_log_bool_msg = re.compile(r'(?<=[\W\s])((?:true)|(?:false))(?=[\W\s])', re.I)
         self.__pattern_log_msg_text = re.compile(
             r'(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3} &lt;[A-Z]&gt;'
@@ -46,7 +46,7 @@ class MainForm(QtGui.QMainWindow):
             r'(?P<date>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}) &lt;(?P<msg>[A-Z])&gt;'
             r' \[(?P<log_name>\w+)~(?P<thread_name>.*?)\]\s.*?', re.I | re.M)
         self.repl_str = r'<font color=gray>\g<date></font> &lt;<font color=red>\g<msg></font>&gt;' \
-                        r' [<U>\g<log_name></U>~<font color="blue">\g<thread_name></font>] '
+                        r' [<U>\g<log_name></U>~<font color="darkblue"><U>\g<thread_name></U></font>] '
 
         # XStream.stderr().messageWritten.connect(self.add_log_err)
         XStream.stdout().messageWritten.connect(self.add_log)
@@ -70,9 +70,9 @@ class MainForm(QtGui.QMainWindow):
         self.gui_reload = GuiReload(self.log, gui_controls_reload)
         self.gui_reload.sig_status_thread.connect(self.__set_btn_reload)
         self.gui_reload.sig_status_thread.connect(self.__set_enable_form)
-        self.gui_reload.sig_job_finished.connect(self.__init_servers)
         self.gui_reload.sig_job_finished.connect(self.__rebuild_frame)
         self.gui_reload.sig_job_finished.connect(self.__reset_highlight)
+        self.gui_reload.sig_start_new_job.connect(self.__init_servers)
         self.gui_reload.start()
 
     def __rebuild_frame(self, status):
@@ -85,14 +85,15 @@ class MainForm(QtGui.QMainWindow):
             if settings_conf.socket_settings.host:
                 socket_logger = copy.copy(self.log)
                 socket_logger.name = settings_conf.socket_settings.socket_type_str
-                self.server_socket = socket_server_start(settings_conf, socket_logger,
-                                                         self.gui_protocol.get_control_form())
-                btn_start, btn_stop, grpb = self.ui.pushButtonStartNet, self.ui.pushButtonStopNet, self.ui.groupBox_Net
-                self.__notify_launch_server('server stopped: "{}"'.format(self.server_socket, str(
-                    self.server_socket.get_address())), btn_start, btn_stop, grpb, False)
-                if self.server_socket:
-                    self.__notify_launch_server('server start: "{}"'.format(self.server_socket, str(
-                        self.server_socket.get_address())), btn_start, btn_stop, grpb, True)
+                if self.gui_reload.isFinished():
+                    self.server_socket = socket_server_start(settings_conf, socket_logger,
+                                                             self.gui_protocol.get_control_form())
+                    btn_start, btn_stop, grpb = self.ui.pushButtonStartNet, self.ui.pushButtonStopNet, self.ui.groupBox_Net
+                    self.__notify_launch_server('server stopped: "{}"'.format(self.server_socket, str(
+                        self.server_socket.get_address())), btn_start, btn_stop, grpb, False)
+                    if self.server_socket:
+                        self.__notify_launch_server('server start: "{}"'.format(self.server_socket, str(
+                            self.server_socket.get_address())), btn_start, btn_stop, grpb, True)
             else:
                 self.ui.dockWidget_Net.setVisible(False)
             if settings_conf.serialport_settings.port:
@@ -107,6 +108,17 @@ class MainForm(QtGui.QMainWindow):
             else:
                 self.ui.dockWidget_Serial.setVisible(False)
 
+            if self.server_socket:
+                self.server_socket.sig_client_added.connect(self.__add_table_net_clients)
+                self.server_socket.sig_job_finished.connect(self.suddenly_stop_server)
+                self.ui.pushButtonStopNet.clicked.connect(lambda: self.stop_server(self.server_socket))
+            else:
+                self.ui.tableView_NetClients.setVisible(False)
+                self.ui.label_CountClientNet.setVisible(False)
+            if self.server_serial:
+                self.server_serial.sig_job_finished.connect(self.suddenly_stop_server)
+                self.ui.pushButtonStop_Serial.clicked.connect(lambda: self.stop_server(self.server_serial))
+
     def __reset_highlight(self):
         self._set_highlight_button(self.ui.pushButtonReloadConfig)
 
@@ -115,20 +127,21 @@ class MainForm(QtGui.QMainWindow):
         self.ui.pushButtonStartNet.clicked.connect(self.start_net_server)
         self.ui.pushButtonStart_Serial.clicked.connect(self.start_serial_server)
 
-        if self.server_socket:
-            self.server_socket.sig_job_finished.connect(self.suddenly_stop_server)
-            self.ui.pushButtonStopNet.clicked.connect(lambda: self.stop_server(self.server_socket))
-        if self.server_serial:
-            self.server_serial.sig_job_finished.connect(self.suddenly_stop_server)
-            self.ui.pushButtonStop_Serial.clicked.connect(lambda: self.stop_server(self.server_serial))
-
-        self.__init_connect_server(self.server_socket)
-        self.__init_connect_server(self.server_serial)
+        # if self.server_socket:
+        #     self.server_socket.sig_count_client_changed.connect(lambda n: self.ui.spinBox_Count_Connections.setValue(n))
+        #     self.server_socket.sig_job_finished.connect(self.suddenly_stop_server)
+        #     self.server_socket.sig_count_client_changed.connect()
+        #     self.ui.pushButtonStopNet.clicked.connect(lambda: self.stop_server(self.server_socket))
+        # else:
+        #     self.ui.spinBox_Count_Connections.setVisible(False)
+        #     self.ui.label_CountClientNet.setVisible(False)
+        # if self.server_serial:
+        #     self.server_serial.sig_job_finished.connect(self.suddenly_stop_server)
+        #     self.ui.pushButtonStop_Serial.clicked.connect(lambda: self.stop_server(self.server_serial))
 
     def __reload_config(self):
         if hasattr(self, 'gui_protocol'):
             self.gui_protocol.remove_all()
-            # del self.gui_protocol
         # if self.server_socket:
         #     self.stop_server(self.server_socket)
         # if self.server_serial:

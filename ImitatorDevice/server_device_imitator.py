@@ -9,11 +9,14 @@ class WorkerThread(QtCore.QThread):
     sig_req_values_form = QtCore.pyqtSignal(name='req_values_form')
     sig_status_thread = QtCore.pyqtSignal(bool, name='status_thread')
 
-    def __init__(self, logger, thread_name='WorkerThread'):
-        super(WorkerThread, self).__init__()
+    def __init__(self, logger, thread_name='WorkerThread', parent=None):
+        super(WorkerThread, self).__init__(parent)
         self.running = False
         self.log = logger
         self.thread_name = thread_name
+
+    def __del__(self):
+        self.wait()
 
     def run(self):
         self.running = True

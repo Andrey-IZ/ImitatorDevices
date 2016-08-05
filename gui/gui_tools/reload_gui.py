@@ -74,6 +74,7 @@ class GuiControlsReload(object):
 
 class GuiReload(QtCore.QThread):
     sig_job_finished = QtCore.pyqtSignal(bool)
+    sig_start_new_job = QtCore.pyqtSignal()
     sig_status_thread = QtCore.pyqtSignal(object, name='status_thread')
 
     def __init__(self, logger, controls_reload: GuiControlsReload, thread_name='reload_gui', parent=None):
@@ -93,6 +94,7 @@ class GuiReload(QtCore.QThread):
         self.__log.system('Reload is finished'.format(self.__log.qthread_name))
         self.sig_job_finished.emit(bool(success))
         self.__log.system('************************************************')
+        self.sig_start_new_job.emit()
 
     def stop(self):
         self.__running = False

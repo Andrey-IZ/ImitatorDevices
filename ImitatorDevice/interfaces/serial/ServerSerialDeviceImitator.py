@@ -19,8 +19,8 @@ class ServerSerialDeviceimitator(ThreadServerDeviceImitator):
     """
     """
 
-    def __init__(self, settings_conf, logger, control_gui=None):
-        super(ServerSerialDeviceimitator, self).__init__(logger)
+    def __init__(self, settings_conf, logger, control_gui=None, parent=None):
+        super(ServerSerialDeviceimitator, self).__init__(logger, parent)
         self.serial = serial.Serial()
         self.__control_gui = control_gui
         self.handler_response = settings_conf.handler_response
@@ -114,11 +114,11 @@ class ServerSerialDeviceimitator(ThreadServerDeviceImitator):
             self.serial.close()
 
 
-def serial_server_start(settings_conf, logger, control_gui=None):
+def serial_server_start(settings_conf, logger, control_gui=None, parent=None):
     is_serial_server_start = False
     serial_server = None
     try:
-        serial_server = ServerSerialDeviceimitator(settings_conf, logger, control_gui)
+        serial_server = ServerSerialDeviceimitator(settings_conf, logger, control_gui, parent)
         logger.info("Serving serial port: {}".format(settings_conf.serialport_settings))
         is_serial_server_start = serial_server.listen()
     except SerialOpenPortException as e:

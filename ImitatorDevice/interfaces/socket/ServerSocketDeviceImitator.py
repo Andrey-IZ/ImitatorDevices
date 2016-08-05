@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 # -*- coding=utf-8 -*-
-
+import copy
 import errno
 import socket
+from PyQt4 import QtCore
 
 from ImitatorDevice.protocol.handling_protocol import HandlingProtocol
 from ImitatorDevice.server_device_imitator import ThreadServerDeviceImitator
+from ImitatorDevice.interfaces.socket.ClientThread import ClientTcpThread
 from tools_binary import byte2hex_str
 
 
@@ -37,21 +39,24 @@ def deco_reader(fn):
 class ServerSocketDeviceimitator(ThreadServerDeviceImitator):
     """
     """
+    sig_client_added = QtCore.pyqtSignal(str)
+    sig_client_removed = QtCore.pyqtSignal(int)
 
-    def __init__(self, settings_conf: HandlingProtocol, logger, control_gui=None, buffer_size=1024):
-        super(ServerSocketDeviceimitator, self).__init__(logger)
-        self.buffer_size = buffer_size
+    def __init__(self, settings_conf: HandlingProtocol, logger, control_gui=None, parent=None):
+        super(ServerSocketDeviceimitator, self).__init__(logger, parent)
+        self.buffer_size = 1024
         self.socket = None
         self.__control_gui = control_gui
         self.handler_response = settings_conf.handler_response
         self.socket_settings = settings_conf.socket_settings
         self.handler_emit_send = settings_conf.handler_emit_send
-        self.__init_socket()
+        self.__threads_pool = {}
+        # self.__init_socket()
 
     def __init_socket(self):
         try:
             self.socket = socket.socket(socket.AF_INET, self.socket_settings.socket_type)
-            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            # self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         except Exception as err:
             exc_str = "!Error: Invalid class port settings: {}".format(self.socket_settings)
             self.log.error(exc_str)
@@ -64,11 +69,13 @@ class ServerSocketDeviceimitator(ThreadServerDeviceImitator):
     def get_address(self):
         return self.socket_settings.host, self.socket_settings.port
 
-    def open_address(self, address_bind):
+    def open_address(self, address_bind, is_blocking=False):
+        self.__init_socket()
         self.socket_settings.host, self.socket_settings.port = address_bind
         try:
             self.socket.bind(address_bind)
-            self.socket.setblocking(0)
+            self.socket.setblocking(int(is_blocking))
+            # self.socket.settimeout(0.5)
         except socket.error as err:
             exc_str = "!ERROR:  Bind socket failed on port {}. Error message: {}".format(self.socket_settings.port,
                                                                                          err.args)
@@ -96,7 +103,15 @@ class ServerSocketDeviceimitator(ThreadServerDeviceImitator):
         return False
 
     def listen(self, amount_tcp_clients=1, thread_name='socket-reader'):
-        return self.listen_address((self.socket_settings.host, self.socket_settings.port))
+        return self.listen_address((self.socket_settings.host, self.socket_settings.port),
+                                   amount_tcp_clients=amount_tcp_clients, thread_name=thread_name)
+
+    def stop(self):
+        for client in self.__threads_pool:
+            client.stop()
+        super(ServerSocketDeviceimitator, self).stop()
+        # for client in self.__list_threads:
+        #     client.terminate()
 
     @deco_reader
     def reader(self):
@@ -164,8 +179,14 @@ class ServerSocketDeviceimitator(ThreadServerDeviceImitator):
                                   extra=self.log_var)
                     self.socket.sendto(packet, addr)
 
+    def __del_client(self, result):
+        client_thread = self.sender()
+        del self.__threads_pool[client_thread]
+        self.sig_client_added.emit(client_thread.get_str_client())
+
     def _reader_tcp(self):
         """loop forever and handling packets protocol"""
+        # client = None
         try:
             while self.running:
                 try:
@@ -175,42 +196,56 @@ class ServerSocketDeviceimitator(ThreadServerDeviceImitator):
                         pass  # тут ставим код выхода
                     else:  # данные есть
                         self.log.error('Connecting client from: {}'.format(addr))
-                        client.setblocking(0)  # снимаем блокировку и тут тоже
-                        for packet in self.handler_emit_send(self.log, self.__control_gui, is_connect=True):
-                            if packet:
-                                client.send(packet)
-                                self.log.warning("<- send: {}".format(byte2hex_str(packet)))
-
-                        # если в блоке except вы выходите,
-                        # ставить else и отступ не нужно
-                        while self.running:
-                            try:
-                                for packet in self.handler_emit_send(self.log, self.__control_gui, is_timeout=True):
-                                    if packet:
-                                        client.send(packet)
-                                        self.log.warning("<- send <timeout>: {} ".format(byte2hex_str(packet)))
-
-                                data_recv = client.recv(self.buffer_size)
-                            except socket.error as err:  # данных нет
-                                if err.args[0] == errno.EWOULDBLOCK or err.args[0] == errno.EAGAIN:
-                                    # self.log.debug('EWOULDBLOCK')
-                                    # time.sleep(0.1)           # short delay, no tight loops
-                                    continue
-                                elif err.args[0] == errno.WSAECONNABORTED:
-                                    self.log.error('>> Client closed connection from {}'.format(addr))
-                                    break
-                                elif err.args[0] == errno.WSAECONNRESET:
-                                    self.log.error('>> Client break down connection from {}'.format(addr))
-                                    break
-                                else:
-                                    client.close()
-                                    self.log.error('Connection close')
-                                    raise Exception("error") from err
-                            else:  # данные есть
-                                if not data_recv:
-                                    break
-                                else:
-                                    self.__process_packet_tcp(client, data_recv)
+                        thread_logger = copy.copy(self.log)
+                        thread_name = '{}:{}<=>{}:{}'.format(*self.get_address(), *addr)
+                        client_thread = ClientTcpThread(thread_logger, client=client, address=addr,
+                                                 handlers=(
+                                                     self.handler_emit_send, self.handler_response, self.__control_gui),
+                                                 thread_name=thread_name,
+                                                 buffer_size=self.buffer_size,
+                                                 )
+                        client_thread.sig_job_finished.connect(self.__del_client)
+                        client_thread.start()
+                        self.__threads_pool[client_thread] = addr
+                        self.sig_client_added.emit(client_thread.get_str_client())
+                        # self.log.qthread_name = 'client=' + str(addr)
+                        # client.setblocking(0)  # снимаем блокировку и тут тоже
+                        # for packet in self.handler_emit_send(self.log, self.__control_gui, is_connect=True):
+                        #     if packet:
+                        #         client.send(packet)
+                        #         self.log.warning("<- send: {}".format(byte2hex_str(packet)))
+                        #
+                        # # если в блоке except вы выходите,
+                        # # ставить else и отступ не нужно
+                        # while self.running:
+                        #     try:
+                        #         for packet in self.handler_emit_send(self.log, self.__control_gui, is_timeout=True):
+                        #             if packet:
+                        #                 client.send(packet)
+                        #                 self.log.warning("<- send <timeout>: {} ".format(byte2hex_str(packet)))
+                        #
+                        #         data_recv = client.recv(self.buffer_size)
+                        #     except socket.error as err:  # данных нет
+                        #         if err.args[0] == errno.EWOULDBLOCK or err.args[0] == errno.EAGAIN:
+                        #             # self.log.debug('EWOULDBLOCK')
+                        #             # time.sleep(0.1)           # short delay, no tight loops
+                        #             continue
+                        #         elif err.args[0] == errno.WSAECONNABORTED:
+                        #             self.log.error('>> Client closed connection from {}'.format(addr))
+                        #             break
+                        #         elif err.args[0] == errno.WSAECONNRESET:
+                        #             self.log.error('>> Client break down connection from {}'.format(addr))
+                        #             break
+                        #         else:
+                        #             client.close()
+                        #             self.log.error('Connection close')
+                        #             raise Exception("error") from err
+                        #     else:  # данные есть
+                        #         if not data_recv:
+                        #             break
+                        #         else:
+                        #             self.__process_packet_tcp(client, data_recv)
+                        # client.close()
                 except socket.error as err:
                     if err.args[0] == errno.WSAECONNABORTED:
                         self.log.error('!Error: Connection abort from {}: {}'.format(addr, err.args[1]))
@@ -234,27 +269,21 @@ class ServerSocketDeviceimitator(ThreadServerDeviceImitator):
             self.log.error(exc_str)
             raise SocketDeviceException(exc_str) from err
         finally:
-            # self.socket.shutdown(socket.SHUT_RD)
+            try:
+                self.socket.shutdown(socket.SHUT_RD)
+            except:
+                pass
             self.socket.close()
-
-    def __process_packet_tcp(self, client, data_recv):
-        self.log.warning("======================================")
-        self.log.warning("-> recv: {}".format((byte2hex_str(data_recv))))
-        list_packets = self.handler_response(self.log, data_recv, self.__control_gui)
-        if list_packets:
-            for packet in list_packets:
-                if packet:
-                    self.log.warning("<- send: {}".format(byte2hex_str(packet)))
-                    client.send(packet)
+            pass
 
 
-def socket_server_start(settings_conf, logger, control_gui=None):
+def socket_server_start(settings_conf, logger, control_gui=None, parent=None):
     is_socket_server_start = False
     socket_server = None
     try:
         socket_server = ServerSocketDeviceimitator(settings_conf, logger, control_gui)
         logger.info("Serving socket port: {}".format(settings_conf.socket_settings))
-        is_socket_server_start = socket_server.listen()
+        is_socket_server_start = socket_server.listen(amount_tcp_clients=5)
     except SocketBindPortException as err:
         print(err)
     except Exception as err:
