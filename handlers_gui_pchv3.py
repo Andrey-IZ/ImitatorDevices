@@ -227,33 +227,55 @@ def handler_pchv3_update_sensors(log, param_data) -> [bytes]:
     response_data, control_gui = param_data
     names_channels = globals().get('config_vars').get('names_channels')
     p, g = 'Сенсоры', 'Обновление сенсоров'
-
-    rand = control_gui.get_ui_value('Сенсоры', 'Обновление сенсоров', 'Random', 'checkbox')
-    # response_data.set_ui_value('Состояние питания', 'Источники питания', 'Мощность', 'spinbox', 13)
-
-    t1 = random.randrange(100, 1000) / 10 if rand else control_gui.get_ui_value(p, g, 't1', 'spinbox')
-    t2 = random.randrange(100, 1000) / 10 if rand else control_gui.get_ui_value(p, g, 't2', 'spinbox')
-    t_top = random.randrange(0, 2) if rand else control_gui.get_ui_value(p, g, 't_top', 'checkbox')
-    t_crit = random.randrange(0, 2) if rand else control_gui.get_ui_value(p, g, 't_crit', 'checkbox')
-    t_95 = random.randrange(0, 2) if rand else control_gui.get_ui_value(p, g, 't_95', 'checkbox')
-    p57v1 = random.randrange(0, 2) if rand else control_gui.get_ui_value(p, g, 'p57v1', 'checkbox')
-    p57v2 = random.randrange(0, 2) if rand else control_gui.get_ui_value(p, g, 'p57v1', 'checkbox')
-    p60v = random.randrange(0, 2) if rand else control_gui.get_ui_value(p, g, 'p60v', 'checkbox')
-    p75v = random.randrange(0, 2) if rand else control_gui.get_ui_value(p, g, 'p75v', 'checkbox')
-    clk = random.randrange(0, 2) if rand else control_gui.get_ui_value(p, g, 'clk', 'checkbox')
-    count_channel = len(names_channels)
     list_info =[]
+    count_channel = len(names_channels)
     list_sensors = [{'value': count_channel, 'type': 'quint8'}]
 
-    for id_channel in range(len(names_channels)):
-        fapch_syn = random.randrange(0, 2) if rand else control_gui.get_ui_value(p, g, 'fapch_syn', 'checkbox')
-        fapch_jit = random.randrange(0, 2) if rand else control_gui.get_ui_value(p, g, 'fapch_jit', 'checkbox')
-        acp = random.randrange(10, 500) / 10 if rand else control_gui.get_ui_value(p, g, 'acp', 'spinbox')
-        list_info.extend([{'fapch_syn':fapch_syn, 'fapch_jit':fapch_jit, 'acp': acp}])
+    if control_gui:
+        rand = control_gui.get_ui_value('Сенсоры', 'Обновление сенсоров', 'Random', 'checkbox')
+        # response_data.set_ui_value('Состояние питания', 'Источники питания', 'Мощность', 'spinbox', 13)
 
-        list_sensors.append({'value': fapch_syn, 'type': 'bool'})
-        list_sensors.append({'value': fapch_jit, 'type': 'bool'})
-        list_sensors.append({'value': acp, 'type': 'float'})
+        t1 = random.randrange(100, 1000) / 10 if rand else control_gui.get_ui_value(p, g, 't1', 'spinbox')
+        t2 = random.randrange(100, 1000) / 10 if rand else control_gui.get_ui_value(p, g, 't2', 'spinbox')
+        t_top = random.randrange(0, 2) if rand else control_gui.get_ui_value(p, g, 't_top', 'checkbox')
+        t_crit = random.randrange(0, 2) if rand else control_gui.get_ui_value(p, g, 't_crit', 'checkbox')
+        t_95 = random.randrange(0, 2) if rand else control_gui.get_ui_value(p, g, 't_95', 'checkbox')
+        p57v1 = random.randrange(0, 2) if rand else control_gui.get_ui_value(p, g, 'p57v1', 'checkbox')
+        p57v2 = random.randrange(0, 2) if rand else control_gui.get_ui_value(p, g, 'p57v1', 'checkbox')
+        p60v = random.randrange(0, 2) if rand else control_gui.get_ui_value(p, g, 'p60v', 'checkbox')
+        p75v = random.randrange(0, 2) if rand else control_gui.get_ui_value(p, g, 'p75v', 'checkbox')
+        clk = random.randrange(0, 2) if rand else control_gui.get_ui_value(p, g, 'clk', 'checkbox')
+
+        for id_channel in range(len(names_channels)):
+            fapch_syn = random.randrange(0, 2) if rand else control_gui.get_ui_value(p, g, 'fapch_syn', 'checkbox')
+            fapch_jit = random.randrange(0, 2) if rand else control_gui.get_ui_value(p, g, 'fapch_jit', 'checkbox')
+            acp = random.randrange(10, 500) / 10 if rand else control_gui.get_ui_value(p, g, 'acp', 'spinbox')
+            list_info.extend([{'fapch_syn':fapch_syn, 'fapch_jit':fapch_jit, 'acp': acp}])
+
+            list_sensors.append({'value': fapch_syn, 'type': 'bool'})
+            list_sensors.append({'value': fapch_jit, 'type': 'bool'})
+            list_sensors.append({'value': acp, 'type': 'float'})
+    else:
+        t1 = random.randrange(100, 1000) / 10
+        t2 = random.randrange(100, 1000) / 10
+        t_top = random.randrange(0, 2)
+        t_crit = random.randrange(0, 2)
+        t_95 = random.randrange(0, 2)
+        p57v1 = random.randrange(0, 2)
+        p57v2 = random.randrange(0, 2)
+        p60v = random.randrange(0, 2)
+        p75v = random.randrange(0, 2)
+        clk = random.randrange(0, 2)
+
+        for id_channel in range(len(names_channels)):
+            fapch_syn = random.randrange(0, 2)
+            fapch_jit = random.randrange(0, 2)
+            acp = random.randrange(10, 500) / 10
+            list_info.extend([{'fapch_syn':fapch_syn, 'fapch_jit': fapch_jit, 'acp': acp}])
+
+            list_sensors.append({'value': fapch_syn, 'type': 'bool'})
+            list_sensors.append({'value': fapch_jit, 'type': 'bool'})
+            list_sensors.append({'value': acp, 'type': 'float'})
 
     log.info('Данные: t1={}, t2={}, t_top={}, t_crit={}, t_95={}, p57v1={}, p57v2={}, p60v={}, p75v={}, clk={}'.format(
              t1, t2, t_top, t_crit, t_95, p57v1, p57v2, p60v, p75v, clk))
@@ -353,7 +375,10 @@ def handler_pchv3_set_control_adt7310(log, parsing_data, param_data) -> [bytes]:
     request_data, response_data, control_gui = param_data
     code_req, code_resp = request_data
     if code == code_req:
-        result = control_gui.get_ui_value('Состояние питания', 'Источники питания2', 'ADTResult', 'checkbox')
+        if control_gui:
+            result = control_gui.get_ui_value('Состояние питания', 'Источники питания2', 'ADTResult', 'checkbox')
+        else:
+            result = True
 
         data = value_from_qt_bytes('quint16', bytes_recv[4:6])
 
