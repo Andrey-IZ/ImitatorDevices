@@ -5,8 +5,8 @@ import sys
 from PyQt4 import QtGui, uic
 from PyQt4.Qt import *
 
-from ImitatorDevice.interfaces.serial.ServerSerialDeviceImitator import serial_server_start, ServerSerialDeviceimitator
-from ImitatorDevice.interfaces.socket.ServerSocketDeviceImitator import socket_server_start, ServerSocketDeviceimitator
+from imitator_device.interfaces.serial.ServerSerialDeviceImitator import serial_server_start, ServerSerialDeviceimitator
+from imitator_device.interfaces.socket.ServerSocketDeviceImitator import socket_server_start, ServerSocketDeviceimitator
 from gui.gui_tools.gui_protocol import GuiProtocol
 from gui.gui_tools.reload_gui import GuiReload, GuiControlsReload
 from gui.main_window_ui import Ui_MainWindow

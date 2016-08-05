@@ -1,4 +1,4 @@
-from ImitatorDevice.imitator_device_argparse import ImitatorDeviceParams
+from imitator_device.imitator_device_argparse import ImitatorDeviceParams
 
 __author__ = 'Andrey'
 

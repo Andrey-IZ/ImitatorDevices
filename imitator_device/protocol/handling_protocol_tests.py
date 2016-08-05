@@ -4,7 +4,7 @@ import re
 import sys
 
 import yaml
-from ImitatorDevice.protocol.handling_protocol import HandlingProtocol
+from imitator_device.protocol.handling_protocol import HandlingProtocol
 from tools_binary import str_hex2byte
 
 

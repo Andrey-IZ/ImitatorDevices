@@ -43,8 +43,8 @@ class WorkerThread(QtCore.QThread):
 
 
 class ThreadServerDeviceImitator(WorkerThread):
-    def __init__(self, logger):
-        super(ThreadServerDeviceImitator, self).__init__(logger, 'ThreadServerDeviceImitator')
+    def __init__(self, logger, parent=None):
+        super(ThreadServerDeviceImitator, self).__init__(logger, 'ThreadServerDeviceImitator', parent)
         self.log = logger
         self.thread_read = None
         self.running = False
@@ -81,7 +81,7 @@ class ThreadServerDeviceImitator(WorkerThread):
         pass
 
     def stop(self):
-        """Stop copying"""
+        """Stop thread"""
         self.log.debug('stopping thread: {}'.format(self.thread_name))
         super(ThreadServerDeviceImitator, self).stop()
 

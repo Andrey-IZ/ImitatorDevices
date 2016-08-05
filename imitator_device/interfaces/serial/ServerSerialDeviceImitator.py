@@ -3,7 +3,7 @@
 
 import serial
 import time
-from ImitatorDevice.server_device_imitator import ThreadServerDeviceImitator
+from imitator_device.server_device_imitator import ThreadServerDeviceImitator
 from tools_binary import byte2hex_str
 
 

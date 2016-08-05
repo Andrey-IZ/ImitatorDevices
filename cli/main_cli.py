@@ -5,9 +5,9 @@
 import copy
 import sys
 
-from ImitatorDevice.interfaces.serial.ServerSerialDeviceImitator import serial_server_start, SerialDeviceException
-from ImitatorDevice.interfaces.socket.ServerSocketDeviceImitator import *
-from ImitatorDevice.protocol.handling_protocol import GuiUsedException
+from imitator_device.interfaces.serial.ServerSerialDeviceImitator import serial_server_start, SerialDeviceException
+from imitator_device.interfaces.socket.ServerSocketDeviceImitator import *
+from imitator_device.protocol.handling_protocol import GuiUsedException
 
 
 def start_server_cli(logger, params, settings_conf, file_conf):

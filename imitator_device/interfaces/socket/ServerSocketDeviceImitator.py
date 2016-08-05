@@ -5,9 +5,9 @@ import errno
 import socket
 from PyQt4 import QtCore
 
-from ImitatorDevice.protocol.handling_protocol import HandlingProtocol
-from ImitatorDevice.server_device_imitator import ThreadServerDeviceImitator
-from ImitatorDevice.interfaces.socket.ClientThread import ClientTcpThread
+from imitator_device.protocol.handling_protocol import HandlingProtocol
+from imitator_device.server_device_imitator import ThreadServerDeviceImitator
+from imitator_device.interfaces.socket.ClientThread import ClientTcpThread
 from tools_binary import byte2hex_str
 
 
