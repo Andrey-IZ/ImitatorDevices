@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import logging
-from ImitatorDevice.protocol.handling_protocol import HandlingProtocol
+from imitator_device.protocol.handling_protocol import HandlingProtocol
 from imitator_serial_socket_device_params import ImitatorSeriaSocketlDeviceParams
 import sys
 import os.path
