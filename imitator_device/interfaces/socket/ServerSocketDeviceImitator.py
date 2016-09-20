@@ -40,7 +40,7 @@ class ServerSocketDeviceimitator(ThreadServerDeviceImitator):
     """
     """
     sig_client_added = QtCore.pyqtSignal(str)
-    sig_client_removed = QtCore.pyqtSignal(int)
+    sig_client_removed = QtCore.pyqtSignal(str)
 
     def __init__(self, settings_conf: HandlingProtocol, logger, control_gui=None, parent=None):
         super(ServerSocketDeviceimitator, self).__init__(logger, parent)
@@ -179,10 +179,10 @@ class ServerSocketDeviceimitator(ThreadServerDeviceImitator):
                                   extra=self.log_var)
                     self.socket.sendto(packet, addr)
 
-    def __del_client(self, result):
+    def __del_client(self):
         client_thread = self.sender()
         del self.__threads_pool[client_thread]
-        self.sig_client_added.emit(client_thread.get_str_client())
+        self.sig_client_removed.emit(client_thread.get_str_client())
 
     def _reader_tcp(self):
         """loop forever and handling packets protocol"""

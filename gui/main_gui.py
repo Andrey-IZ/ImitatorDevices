@@ -5,6 +5,7 @@ import sys
 from PyQt4 import QtGui, uic
 from PyQt4.Qt import *
 
+from gui.gui_tools.table_clients.update_table_client import ModelNetClients
 from imitator_device.interfaces.serial.ServerSerialDeviceImitator import serial_server_start, ServerSerialDeviceimitator
 from imitator_device.interfaces.socket.ServerSocketDeviceImitator import socket_server_start, ServerSocketDeviceimitator
 from gui.gui_tools.gui_protocol import GuiProtocol
@@ -35,6 +36,7 @@ class MainForm(QtGui.QMainWindow):
         self.__is_init_server = True
         self.settings_conf = settings_conf
         self.params = params
+        self.model_net_clients = ModelNetClients(self.ui.tableView_NetClients)
         self.__pattern_log_str = re.compile(r'(<.*?>[^<]+?)(".*?")', re.DOTALL)
         self.__pattern_log_apostr = re.compile(r'(\'.*?\')', re.DOTALL)
         self.__pattern_log_digit_msg = re.compile(r'(?<=[\W\s])((?:[0-9]+)|(?:[0-9A-F]{2})|(?:[0-9A-F]{4}))(?=[\W\s])')
@@ -109,7 +111,8 @@ class MainForm(QtGui.QMainWindow):
                 self.ui.dockWidget_Serial.setVisible(False)
 
             if self.server_socket:
-                self.server_socket.sig_client_added.connect(self.__add_table_net_clients)
+                self.server_socket.sig_client_added.connect(self.model_net_clients.add_row)
+                self.server_socket.sig_client_removed.connect(self.model_net_clients.del_row)
                 self.server_socket.sig_job_finished.connect(self.suddenly_stop_server)
                 self.ui.pushButtonStopNet.clicked.connect(lambda: self.stop_server(self.server_socket))
             else:
@@ -118,6 +121,9 @@ class MainForm(QtGui.QMainWindow):
             if self.server_serial:
                 self.server_serial.sig_job_finished.connect(self.suddenly_stop_server)
                 self.ui.pushButtonStop_Serial.clicked.connect(lambda: self.stop_server(self.server_serial))
+
+    def __add_table_net_clients(self, client_name):
+        self.model_net_clients.add_row(client_name)
 
     def __reset_highlight(self):
         self._set_highlight_button(self.ui.pushButtonReloadConfig)

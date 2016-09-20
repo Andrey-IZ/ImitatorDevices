@@ -92,6 +92,9 @@ class ClientTcpThread(QtCore.QThread):
                         self.__process_packet_tcp(data_recv)
         finally:
             self.__client.close()
+            if self.__running:
+                return False
+            return True
 
     def __process_packet_tcp(self, data_recv):
         self.__log.warning("======================================")
