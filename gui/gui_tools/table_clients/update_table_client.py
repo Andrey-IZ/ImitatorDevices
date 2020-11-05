@@ -1,6 +1,5 @@
 #!/usr/bin/env python
-from PyQt4.QtGui import QStandardItemModel, QStandardItem
-from PyQt4 import Qt
+from PyQt5.QtGui import QStandardItemModel, QStandardItem
 
 
 class ModelNetClients:

@@ -1,6 +1,6 @@
 from libs.log_tools.logger import Logger
 import copy
-from PyQt4 import QtGui, QtCore
+from PyQt5 import QtGui, QtCore
 
 KW_PAGES, KW_GROUPS, KW_FIELDS, KW_GUI_MANUAL_ANSWER, KW_GUI_PAGES = (
     'pages', 'groups', 'fields', 'manual_answer', 'pages')

@@ -3,7 +3,7 @@
 
 import errno
 import socket
-from PyQt4 import QtCore
+from PyQt5 import QtCore
 from tools_binary import byte2hex_str
 
 

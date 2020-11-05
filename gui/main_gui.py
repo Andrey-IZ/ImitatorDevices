@@ -2,8 +2,8 @@ import copy
 import re
 import sys
 
-from PyQt4 import QtGui, uic
-from PyQt4.Qt import *
+from PyQt5 import QtGui, QtWidgets, uic
+from PyQt5.Qt import *
 
 from gui.gui_tools.table_clients.update_table_client import ModelNetClients
 from imitator_device.interfaces.serial.ServerSerialDeviceImitator import serial_server_start, ServerSerialDeviceimitator
@@ -14,7 +14,7 @@ from gui.main_window_ui import Ui_MainWindow
 from gui.qt_logging import XStream
 
 
-class MainForm(QtGui.QMainWindow):
+class MainForm(QtWidgets.QMainWindow):
     sig_reply_req_values_form = pyqtSignal(dict)
 
     def __init__(self, log, params, settings_conf, file_conf, parent=None):

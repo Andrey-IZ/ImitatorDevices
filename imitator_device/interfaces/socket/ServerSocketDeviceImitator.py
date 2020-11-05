@@ -3,7 +3,7 @@
 import copy
 import errno
 import socket
-from PyQt4 import QtCore
+from PyQt5 import QtCore
 
 from imitator_device.protocol.handling_protocol import HandlingProtocol
 from imitator_device.server_device_imitator import ThreadServerDeviceImitator

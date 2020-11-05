@@ -1,6 +1,6 @@
 import time
 
-from PyQt4 import QtCore
+from PyQt5 import QtCore
 
 from gui.gui_tools.fill_control.fill_control_serial import FillControlSerial
 from gui.gui_tools.fill_control.fill_control_socket import FillControlSocket

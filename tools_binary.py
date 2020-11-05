@@ -25,6 +25,11 @@ def pack_bits(fmt, *values, **kwargs):
 
 
 def str_hex2byte(request):
+    """
+    Converts a string of Hex value into byte type
+    :param request:
+    :return:
+    """
     if not isinstance(request, str):
         return None
 
